@@ -201,6 +201,10 @@ setup_system() {
   setup_power
   sudo systemctl enable --now bluetooth avahi-daemon tuned tuned-ppd fwupd-refresh.timer
   if item_on printing; then sudo systemctl enable --now cups; fi
+  # Drivers from the scanner that need a service or a group.
+  if driver_on smartcard; then sudo systemctl enable --now pcscd.socket; fi
+  if driver_on amd-lact; then sudo systemctl enable --now lactd; fi
+  if driver_on razer; then sudo usermod -aG plugdev "$USER"; fi
   if cpu_is_intel /proc/cpuinfo; then
     sudo systemctl enable --now thermald
     # Low Power Mode Daemon: keeps light work on the efficient cores of hybrid Intel CPUs (Meteor Lake and newer,

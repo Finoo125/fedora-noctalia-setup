@@ -270,7 +270,7 @@ tui_stop() {
 # --- What the machine has, for the welcome screen and the choices' defaults.
 
 tui_detect() {
-  local id version dm kind
+  local id version dm
   # shellcheck source=/dev/null
   id=$(. /etc/os-release && echo "${NAME:-Linux}") version=$(. /etc/os-release && echo "${VERSION_ID:-}")
   TUI_SYSTEM="$id $version"
@@ -280,11 +280,10 @@ tui_detect() {
   TUI_ROOT_FS=$(findmnt -no FSTYPE / 2>/dev/null || echo unknown)
   TUI_HOME_FS=$(findmnt -no FSTYPE /home 2>/dev/null || echo unknown)
   if compgen -G '/sys/class/power_supply/BAT*' >/dev/null; then TUI_LAPTOP=1; else TUI_LAPTOP=""; fi
-  TUI_GPU=unknown
-  if have lspci; then
-    kind=$(nvidia_classify "$(lspci -d ::03xx)")
-    TUI_GPU=$kind
-  fi
+  hw_scan
+  TUI_GPU=none
+  if [[ -n "${HW_FOUND[nvidia-legacy]:-}" ]]; then TUI_GPU=legacy; fi
+  if [[ -n "${HW_FOUND[nvidia]:-}" ]]; then TUI_GPU=modern; fi
   TUI_DM=""
   for dm in greetd gdm sddm plasmalogin lightdm; do
     if systemctl is-enabled -q "$dm" 2>/dev/null; then TUI_DM=$dm; break; fi
@@ -302,16 +301,15 @@ tui_pages() {
     TUI_PAGES+=("menu:${menu%%|*}")
     TUI_WIZARD+=("${menu#*|}")
   done
-  TUI_PAGES+=(extras look review)
-  TUI_WIZARD+=(Extras Look Review Install Done)
+  TUI_PAGES+=(drivers extras look review)
+  TUI_WIZARD+=(Drivers Extras Look Review Install Done)
 }
 
 # tui_step INDEX -> "step N of M" for the top bar.
 tui_step() { echo "step $(($1 + 1)) of ${#TUI_WIZARD[@]}"; }
 
 # The extras: "id|label|what it does". They are questions, not apps.
-TUI_EXTRAS=("nvidia|NVIDIA driver|RPM Fusion's driver for RTX 20 to RTX 50 cards: open kernel modules, CUDA, NVENC. With Secure Boot you set a one-time password."
-  "fingerprint|Fingerprint login|Unlock sudo, the login and the lock screen with a finger. Enrolled after the install, when this window closes."
+TUI_EXTRAS=("fingerprint|Fingerprint login|Unlock sudo, the login and the lock screen with a finger. Enrolled after the install, when this window closes."
   "home-snapshots|Hourly snapshots of /home|Every hour, kept 7 days, so a deleted file can be restored. No backup: Pika Backup copies to another drive."
   "grub-btrfs|Snapshots in the boot menu|A Fedora snapshots entry in the boot menu, to start the system as it was before an update.")
 declare -gA TUI_ON TUI_OFF_WHY TUI_DEFAULT
@@ -322,16 +320,13 @@ tui_defaults() {
   local id key role
   for id in "${CAT_IDS[@]}"; do if item_on "$id"; then TUI_ON[$id]=1; else TUI_ON[$id]=""; fi; done
   for role in "${ROLES[@]}"; do TUI_DEFAULT[$role]=$(default_for "$role"); done
-  for key in fingerprint home-snapshots grub-btrfs nvidia; do
+  for id in $(found_drivers); do if driver_on "$id"; then TUI_ON[$id]=1; else TUI_ON[$id]=""; fi; done
+  if [[ -f "$STATE_DIR/declined-nvidia" ]]; then TUI_ON[nvidia]=""; fi
+  for key in fingerprint home-snapshots grub-btrfs; do
     if [[ -f "$STATE_DIR/declined-$key" ]]; then TUI_ON[$key]=""; else TUI_ON[$key]=1; fi
   done
-  case "$TUI_GPU" in
-    none) TUI_OFF_WHY[nvidia]="no NVIDIA card" ;;
-    legacy) TUI_OFF_WHY[nvidia]="card too old" ;;
-    unknown) TUI_OFF_WHY[nvidia]="checked later" ;;
-  esac
-  if rpm -q akmod-nvidia >/dev/null 2>&1; then TUI_OFF_WHY[nvidia]="installed"; fi
-  if [[ -z "$TUI_LAPTOP" ]]; then TUI_ON[fingerprint]=""; fi
+  # Fingerprint login only where the scanner found a reader.
+  if [[ -z "${HW_FOUND[fingerprint-reader]:-}" ]]; then TUI_OFF_WHY[fingerprint]="no reader found"; fi
   [[ "$TUI_HOME_FS" == btrfs ]] || TUI_OFF_WHY[home-snapshots]="/home not on btrfs"
   [[ -d /home/.snapshots ]] && TUI_OFF_WHY[home-snapshots]="already on"
   [[ "$TUI_ROOT_FS" == btrfs ]] || TUI_OFF_WHY[grub-btrfs]="/ not on btrfs"
@@ -344,6 +339,10 @@ tui_defaults() {
 # ticked app with that role.
 tui_sync() {
   local id role var
+  DRIVER_ITEMS=""
+  for id in $(found_drivers); do
+    if [[ -n "${TUI_ON[$id]:-}" ]]; then DRIVER_ITEMS+="${DRIVER_ITEMS:+ }$id"; fi
+  done
   SOFTWARE_ITEMS=""
   for id in "${CAT_IDS[@]}"; do
     if [[ -n "${TUI_ON[$id]:-}" ]]; then SOFTWARE_ITEMS+="${SOFTWARE_ITEMS:+ }$id"; fi
@@ -360,10 +359,13 @@ tui_sync() {
   done
 }
 
-# tui_source_label ID -> where an app comes from, in a word or two.
+# tui_source_label ID -> where an app or driver comes from, in a word or two.
 tui_source_label() {
-  case "${CAT_SOURCE[$1]}" in
+  case "${CAT_SOURCE[$1]:-${DRV_SOURCE[$1]:-}}" in
     dnf) echo Fedora ;;
+    nvidia) echo "RPM Fusion" ;;
+    npm) echo npm ;;
+    uvtool) echo PyPI ;;
     rpmfusion) echo "RPM Fusion" ;;
     terra) echo Terra ;;
     flatpak) echo Flathub ;;
@@ -373,7 +375,7 @@ tui_source_label() {
     repo:docker) echo Docker ;;
     repo:brave) echo Brave ;;
     repo:vivaldi) echo Vivaldi ;;
-    *) echo "${CAT_SOURCE[$1]}" ;;
+    *) echo "${CAT_SOURCE[$1]:-}" ;;
   esac
 }
 
@@ -391,6 +393,7 @@ tui_page_ids() {
   TUI_IDS=()
   case "${TUI_PAGES[TUI_PAGE]}" in
     menu:*) mapfile -t TUI_IDS < <(catalog_ids "${TUI_PAGES[TUI_PAGE]#menu:}") ;;
+    drivers) mapfile -t TUI_IDS < <(found_drivers) ;;
     extras) for entry in "${TUI_EXTRAS[@]}"; do TUI_IDS+=("${entry%%|*}"); done ;;
   esac
 }
@@ -435,10 +438,13 @@ tui_screen_welcome() {
     tui_found accent "!" "/ is $TUI_ROOT_FS, so no snapshots"
   fi
   tui_found cyan "i" "$TUI_LOCALE $G_DOT keyboard $TUI_LAYOUT $G_DOT $TUI_TZ"
-  case "$TUI_GPU" in
-    modern | hybrid) tui_found cyan "i" "NVIDIA card found${TUI_LAPTOP:+ in a laptop}" ;;
-    *) tui_found cyan "i" "${TUI_LAPTOP:+Laptop, }no supported NVIDIA card" ;;
-  esac
+  local n
+  n=$(found_drivers | wc -l)
+  if ((n)); then
+    tui_found cyan "i" "${TUI_LAPTOP:+Laptop; }$n driver$( ((n > 1)) && echo s) to choose on the Drivers page"
+  else
+    tui_found cyan "i" "${TUI_LAPTOP:+Laptop; }no extra drivers needed"
+  fi
   tui_found cyan "i" "Login screen: ${TUI_DM:-none yet}, the Noctalia greeter takes over"
   tui_gap
   if [[ -n "$TUI_MIGRATE" ]]; then
@@ -453,7 +459,7 @@ tui_screen_welcome() {
 
 # tui_screen_list: a menu or the extras: ticks on the left (scrolling), the highlighted row's details.
 tui_screen_list() {
-  local i id r mark star style role src label off wide listw top bottom rows dcol dw roles="" page_title
+  local i id r mark star style role src label off wide listw lw top bottom rows dcol dw roles="" page_title
   tui_page_ids
   page_title=${TUI_WIZARD[TUI_PAGE]}
   tui_frame_begin
@@ -467,8 +473,21 @@ tui_screen_list() {
     tui_put "$TUI_R0" "$TUI_C0" "$TUI_CW" muted "$page_title: tick any. $G_STAR = the default ${roles// /, } (D)."
   elif [[ "${TUI_PAGES[TUI_PAGE]}" == extras ]]; then
     tui_put "$TUI_R0" "$TUI_C0" "$TUI_CW" muted "Extras: things to set up besides the apps."
+  elif [[ "${TUI_PAGES[TUI_PAGE]}" == drivers ]]; then
+    tui_put "$TUI_R0" "$TUI_C0" "$TUI_CW" muted "Drivers this machine needs; recommended ones are ticked."
   else
     tui_put "$TUI_R0" "$TUI_C0" "$TUI_CW" muted "$page_title: tick any."
+  fi
+  if ((${#TUI_IDS[@]} == 0)); then
+    TUI_ROW=$((TUI_R0 + 2))
+    tui_text "green,,b" "$G_DONE Nothing extra needed"
+    tui_text fg "The standard Fedora drivers cover this machine's graphics, Wi-Fi and devices."
+    if [[ -n "${HW_FOUND[nvidia-legacy]:-}" ]]; then
+      tui_gap
+      tui_text accent "${HW_FOUND[nvidia-legacy]}: it needs RPM Fusion's legacy driver, which this installer doesn't set up (rpmfusion.org/Howto/NVIDIA)."
+    fi
+    tui_footer "" "Enter|next" "Backspace|back" "Esc|quit"
+    return 0
   fi
   wide=0
   if ((TUI_CW >= 64)); then wide=1; fi
@@ -489,8 +508,17 @@ tui_screen_list() {
     role=${CAT_ROLE[$id]:-}
     if [[ -n "$role" && "${TUI_DEFAULT[$role]:-}" == "$id" ]]; then star=$G_STAR; fi
     off=${TUI_OFF_WHY[$id]:-}
-    if [[ -n "${CAT_LABEL[$id]:-}" ]]; then label=${CAT_LABEL[$id]} src=$(tui_source_label "$id"); else label=$(tui_extra "$id" label) src=$off; fi
+    if [[ -n "${CAT_LABEL[$id]:-}" ]]; then
+      label=${CAT_LABEL[$id]} src=$(tui_source_label "$id")
+    elif [[ -n "${DRV_LABEL[$id]:-}" ]]; then
+      label=${DRV_LABEL[$id]} src=$(tui_source_label "$id")
+    else
+      label=$(tui_extra "$id" label) src=$off
+    fi
     if ((i == TUI_SEL)); then style="page,accent,b"; elif [[ -n "$off" ]]; then style=muted; else style="fg"; fi
+    # The name gets what the source column leaves, cut with an ellipsis-like ~ when too long.
+    lw=$((listw - 7 - ${#src}))
+    if ((${#label} > lw)); then label="${label:0:lw-1}~"; fi
     tui_put "$r" "$TUI_C0" "$listw" "$style" "$(printf '[%s] %s %-*s' "$mark" "$star" $((listw - 6)) "$label")"
     tui_put "$r" $((TUI_C0 + listw - ${#src})) "${#src}" "${style/fg/muted}" "$src"
     r=$((r + 1))
@@ -525,9 +553,19 @@ tui_screen_list() {
         fi
       fi
     fi
+  elif [[ -n "${DRV_LABEL[$id]:-}" ]]; then
+    tui_text "bright,,b" "${DRV_LABEL[$id]}"
+    tui_text fg "${DRV_ABOUT[$id]}"
+    if ((wide)); then
+      tui_gap
+      tui_text muted "found: ${HW_FOUND[$id]}"
+      tui_text muted "from $(tui_source_label "$id")"
+      tui_text cyan "${DRV_PACKAGES[$id]}"
+    fi
   else
     tui_text "bright,,b" "$(tui_extra "$id" label)"
     tui_text fg "$(tui_extra "$id" about)"
+    if [[ "$id" == fingerprint && -n "${HW_FOUND[fingerprint-reader]:-}" ]]; then tui_text muted "found: ${HW_FOUND[fingerprint-reader]}"; fi
   fi
   TUI_COL="" TUI_TW=""
   if [[ -n "$roles" ]]; then
@@ -661,6 +699,10 @@ tui_pager_lines() {
       if [[ -n "${TUI_ON[$id]:-}" ]]; then TUI_PAGER+=("${CAT_LABEL[$id]}: ${CAT_PACKAGES[$id]}"); fi
     done
   done
+  TUI_PAGER+=("# Drivers")
+  for id in $(found_drivers); do
+    if [[ -n "${TUI_ON[$id]:-}" ]]; then TUI_PAGER+=("${DRV_LABEL[$id]}: ${DRV_PACKAGES[$id]}"); fi
+  done
   TUI_PAGER+=("# KDE Plasma fallback" "${DNF_PLASMA[@]}")
   if ((${#TUI_REMOVE[@]})); then TUI_PAGER+=("# Removed" "${TUI_REMOVE[@]}"); fi
 }
@@ -765,7 +807,7 @@ tui_draw() {
 tui_screen_page() {
   case "${TUI_PAGES[TUI_PAGE]}" in
     welcome) tui_screen_welcome ;;
-    menu:* | extras) tui_screen_list ;;
+    menu:* | drivers | extras) tui_screen_list ;;
     look) tui_screen_look ;;
     review) tui_screen_review ;;
   esac
@@ -788,7 +830,15 @@ tui_goto() {
 tui_list_key() {
   local id role n
   tui_page_ids
-  n=${#TUI_IDS[@]} id=${TUI_IDS[TUI_SEL]}
+  n=${#TUI_IDS[@]}
+  if ((n == 0)); then
+    case "$KEY" in
+      enter | right) tui_goto $((TUI_PAGE + 1)) ;;
+      back | left) tui_goto $((TUI_PAGE - 1)) ;;
+    esac
+    return 0
+  fi
+  id=${TUI_IDS[TUI_SEL]}
   case "$KEY" in
     up) TUI_SEL=$((TUI_SEL > 0 ? TUI_SEL - 1 : 0)) ;;
     down | tab) TUI_SEL=$((TUI_SEL < n - 1 ? TUI_SEL + 1 : TUI_SEL)) ;;
@@ -839,7 +889,7 @@ tui_wizard() {
           enter) if ((TUI_BTN == 1)); then return 1; fi; tui_goto 1 ;;
         esac
         ;;
-      menu:* | extras) tui_list_key ;;
+      menu:* | drivers | extras) tui_list_key ;;
       look)
         case "$KEY" in
           up) TUI_SEL=$((TUI_SEL > 0 ? TUI_SEL - 1 : 0)) ;;
@@ -872,13 +922,11 @@ tui_answers() {
   local key
   tui_sync
   export ASSUME=yes DEFER_FINGERPRINT=1 APPLY_DEFAULTS=1 PRESET_CHOICE SOFTWARE_ITEMS
-  export DEFAULT_TERMINAL DEFAULT_BROWSER DEFAULT_FILES DEFAULT_EDITOR
+  export DEFAULT_TERMINAL DEFAULT_BROWSER DEFAULT_FILES DEFAULT_EDITOR DRIVER_ITEMS
   for key in home-snapshots grub-btrfs; do
     if [[ "${TUI_OFF_WHY[$key]:-}" == "already on" ]]; then continue; fi
     if [[ -n "${TUI_ON[$key]:-}" ]]; then export "ANSWER_${key//-/_}=yes"; else export "ANSWER_${key//-/_}=no"; fi
   done
-  # Without lspci (a fresh Minimal Install) the card is only checked during the install: leave it to setup_nvidia.
-  if [[ "${TUI_OFF_WHY[nvidia]:-}" == "checked later" ]]; then return 0; fi
   if [[ -n "${TUI_ON[nvidia]:-}" ]]; then export NVIDIA=yes; else export NVIDIA=no; fi
 }
 

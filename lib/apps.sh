@@ -94,10 +94,30 @@ install_cursors() {
   rm -rf "$tmp"
 }
 
+# install_npm_tools: the chosen command-line agents from npm, for your user (~/.local/bin). Every run (and `update`)
+# brings them to their latest version.
+install_npm_tools() {
+  local -a pkgs
+  mapfile -t pkgs < <(chosen_by_source npm)
+  ((${#pkgs[@]})) || return 0
+  npm install -g --prefix "$HOME/.local" "${pkgs[@]}"
+}
+
+# install_uv_tools: the chosen command-line tools from PyPI (Aider), each in its own environment, kept up to date.
+install_uv_tools() {
+  local pkg
+  for pkg in $(chosen_by_source uvtool); do
+    uv tool list 2>/dev/null | grep -q "^$pkg " || uv tool install "$pkg"
+  done
+  if chosen_by_source uvtool | grep -q .; then uv tool upgrade --all; fi
+}
+
 install_apps() {
   local fn
   # Catalog apps that install themselves (JetBrains Toolbox, Claude Code, ArtCraft).
   for fn in $(chosen_by_source script); do "$fn"; done
+  install_npm_tools
+  install_uv_tools
   install_nerd_font
   install_cursors
 }

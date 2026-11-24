@@ -54,16 +54,21 @@ Run it as your normal user. In a terminal it opens a full-screen installer:
 
 1. **Welcome:** what it found (Fedora version, btrfs, keyboard and timezone, GPU, login screen, an old fedora-hyprland).
 2. **One menu per kind of software**, each with the popular choices and where they come from: Terminal, Browser,
-   Files, Office & text, Media, Creative & recording, Communication, Gaming, Development, Utilities. Tick any number;
+   Files, Office & text, Media, Creative & recording, Communication, Gaming, Development, Languages, AI agents,
+   Utilities. Tick any number;
    in the Terminal, Browser, Files and editor menus **D** marks the default app (★), which Super+Return, Super+W,
    Super+E, Super+T and "open with" follow.
-3. **Extras:** NVIDIA driver (when a supported card is there), fingerprint login, hourly `/home` snapshots, snapshots
-   in the boot menu.
-4. **Look:** one of the `noctalia-preset` looks, or plain Ayu.
-5. **Review:** what will be added, set up and removed. Nothing changes before **Install now**; **Show every package**
+3. **Drivers:** a scan of this machine's hardware (read from `/sys`, so it works on a fresh install) and what it needs:
+   NVIDIA (RTX 20 and newer), AMD (Vulkan, video codecs; optional LACT and ROCm), Intel (video decoding, Vulkan;
+   optional oneAPI compute, the NPU), Broadcom Wi-Fi, Intel IPU6 webcams, Logitech, Razer, Corsair and gaming mice,
+   the Xbox Wireless Adapter, game controllers, smart card readers, rotation sensors, ASUS laptops. Recommended
+   drivers are ticked. `./install.sh --scan` prints the same list.
+4. **Extras:** fingerprint login (when a reader was found), hourly `/home` snapshots, snapshots in the boot menu.
+5. **Look:** one of the `noctalia-preset` looks, or plain Ayu.
+6. **Review:** what will be added, set up and removed. Nothing changes before **Install now**; **Show every package**
    lists them all.
-6. **Install:** asks for your password once, then shows each step, dnf's progress and the latest log lines.
-7. **Done:** enrolls the fingerprint if you ticked it, and reboots if you want.
+7. **Install:** asks for your password once, then shows each step, dnf's progress and the latest log lines.
+8. **Done:** enrolls the fingerprint if you ticked it, and reboots if you want.
 
 Umbriel, Noctalia, the login screen, the Plasma fallback and the basic KDE tools (Ark, KCalc, Partition Manager,
 Discover, KDE Connect) are always installed.
@@ -73,16 +78,20 @@ Discover, KDE Connect) are always installed.
 | Terminal | Ghostty★, kitty★, foot, Alacritty, Konsole |
 | Browser | Firefox★, Chromium, Helium, Zen Browser, LibreWolf, Brave, Vivaldi, Google Chrome, Microsoft Edge, Ungoogled Chromium |
 | Files | Luciole★, Dolphin★, Nautilus, Nemo, Thunar, PCManFM-Qt, Yazi |
-| Office & text | Okular★, Kate★, Obsidian★, LibreOffice, OnlyOffice, Joplin, Papers, GNOME Text Editor |
+| Office & text | Okular★, Kate★, Obsidian★, LibreOffice, OnlyOffice, Joplin, Papers, GNOME Text Editor, ArtCraft Launcher |
 | Media | mpv★, Gwenview★, VLC, Celluloid, Haruna, Showtime, Loupe, qimgv, Elisa, Strawberry, Spotify |
 | Creative & recording | OBS Studio, GIMP, Inkscape, Krita, Kdenlive, Shotcut, Blender, Audacity, darktable, HandBrake, ArtCraft Launcher |
-| Communication | Thunderbird★, Telegram★, Discord★, Signal★, ZapZap★, Betterbird, Vesktop, Element, Slack, Zoom |
-| Gaming | Steam★, game tools★, Lutris★, Heroic★, ProtonPlus★, Faugus★, Bottles, Prism Launcher, RetroArch, Dolphin Emulator, PCSX2 |
-| Development | VS Code★, build tools★, Python★, Node.js★, Docker★, Podman + Distrobox★, JetBrains Toolbox★, Claude Code★, DBeaver★, VSCodium, Zed, Neovim, Vim, Helix, Rust, Go |
+| Communication | Thunderbird★, Telegram★, Discord★, Signal★, ZapZap★, Betterbird, Vesktop, Element, Slack, Zoom, Ferdium |
+| Gaming | Steam★, game tools★, Lutris★, Heroic★, ProtonPlus★, Faugus★, Bottles, Prism Launcher |
+| Development | VS Code★, Docker★, Podman + Distrobox★, JetBrains Toolbox★, DBeaver★, VSCodium, Zed, Neovim, Vim, Helix |
+| Languages | C and C++★, Python★, JavaScript and TypeScript★, Deno, Java, Kotlin, Rust, Go, C# and .NET, PHP, Ruby, Zig, Lua, Swift, Dart, Flutter, Haskell, Elixir and Erlang, R, Julia, OCaml |
+| AI agents | Claude Code★, Codex, Gemini CLI, GitHub Copilot CLI, OpenCode, Goose, Aider, Qwen Code, Crush, Cursor, Ollama, Jan |
 | Utilities | Bitwarden★, Mission Center★, LocalSend★, Gear Lever★, Pika Backup★, Flatseal★, Printing★, KeePassXC, Syncthing, qBittorrent, Nextcloud |
 
 Sources, in this order: Fedora and RPM Fusion, then Terra, then the vendor's own RPM repo (Brave, Vivaldi, Google
 Chrome, Microsoft Edge, VS Code, Docker; added only when you tick that app), and Flathub only for apps without an RPM.
+AI agents that are only published on npm or PyPI are installed for your user into `~/.local/bin` and updated by
+`update`.
 The whole list lives in `lib/catalog.sh`.
 
 Keys: arrows (or j/k) move, Space ticks, Enter continues, Backspace goes back, Esc quits. It needs a window of at
@@ -94,6 +103,7 @@ Unticking an app later doesn't remove it if it is already installed.
 ```bash
 ./install.sh --dry-run   # list the packages and steps, change nothing
 ./install.sh --plain     # plain text, questions asked inline (what `update` runs)
+./install.sh --scan      # list the hardware that needs extra drivers
 ```
 
 A full log is kept in `~/.cache/fedora-noctalia-setup/install.log`. If something fails, fix it and run `install.sh`

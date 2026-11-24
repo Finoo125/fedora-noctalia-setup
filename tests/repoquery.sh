@@ -6,6 +6,7 @@ cd "$(dirname "$0")/.."
 dnf install -y sudo
 source lib/common.sh
 source lib/catalog.sh
+source lib/drivers.sh
 source lib/packages.sh
 SOFTWARE_ITEMS="${CAT_IDS[*]}"
 setup_repos
@@ -23,5 +24,12 @@ for p in "${wanted[@]}"; do
 done
 for app in $(all_by_source flatpak) "${FLATPAK_THEMES[@]}"; do
   flatpak remote-info flathub "$app" >/dev/null 2>&1 || { echo "missing flatpak: $app"; missing=1; }
+done
+# Agents installed with npm and uv must exist in their registries.
+for pkg in $(all_by_source npm); do
+  curl -fsS "https://registry.npmjs.org/$pkg/latest" >/dev/null || { echo "missing npm package: $pkg"; missing=1; }
+done
+for pkg in $(all_by_source uvtool); do
+  curl -fsS "https://pypi.org/pypi/$pkg/json" >/dev/null || { echo "missing PyPI package: $pkg"; missing=1; }
 done
 exit $missing

@@ -4,8 +4,11 @@ cd "$(dirname "$0")/.." || exit 1
 source tests/lib.sh
 source lib/common.sh
 source lib/catalog.sh
+source lib/drivers.sh
 source lib/packages.sh
 unset SOFTWARE_ITEMS
+# A machine without special hardware, so the results don't depend on the one running the tests.
+hw_scan "" "" "" ""
 
 repo_list='repo id                 repo name                          status
 fedora                  Fedora 44 - x86_64                 enabled
@@ -116,17 +119,38 @@ assert_eq "$(sort <<<"$all" | uniq -d)" "" "menus don't repeat base packages"
 assert_eq "" "$(printf '%s\n' "${CAT_IDS[@]}" | sort | uniq -d)" "every app id is unique"
 for id in "${CAT_IDS[@]}"; do
   case "${CAT_SOURCE[$id]}" in
-    dnf | rpmfusion | terra | flatpak | script | repo:vscode | repo:docker | repo:brave | repo:vivaldi | repo:chrome | repo:edge) ;;
+    dnf | rpmfusion | terra | flatpak | script | npm | uvtool | repo:vscode | repo:docker | repo:brave | repo:vivaldi | repo:chrome | repo:edge) ;;
     *) assert_eq "a known source" "${CAT_SOURCE[$id]}" "$id has a known source" ;;
   esac
-  [[ " terminal browser files office media creative chat gaming dev utils " == *" ${CAT_MENU[$id]} "* ]] ||
-    assert_eq "a known menu" "${CAT_MENU[$id]}" "$id is in a known menu"
+  for menu in ${CAT_MENU[$id]//,/ }; do
+    printf '%s\n' "${CATEGORIES[@]%%|*}" | grep -qx "$menu" || assert_eq "a known menu" "$menu" "$id is in a known menu"
+  done
 done
 for fn in $(all_by_source script); do assert_true "script app $fn exists" bash -c "source lib/common.sh; source lib/apps.sh; declare -F $fn"; done
 assert_eq "ghostty" "$(default_for terminal)" "Ghostty is the default terminal"
 assert_eq "firefox" "$(default_for browser)" "Firefox is the default browser"
 assert_eq "luciole" "$(default_for files)" "Luciole is the default file manager"
 assert_eq "kate" "$(default_for editor)" "Kate is the default editor"
+assert_true  "ArtCraft is in Creative"               grep -qx artcraft <<<"$(catalog_ids creative)"
+assert_true  "and in Office & text"                 grep -qx artcraft <<<"$(catalog_ids office)"
+assert_true  "Ferdium is in Communication"           grep -qx ferdium <<<"$(catalog_ids chat)"
+assert_true  "Betterbird is in Communication"        grep -qx betterbird <<<"$(catalog_ids chat)"
+for id in retroarch dolphinemu pcsx2; do assert_false "no console emulator $id" grep -qx "$id" <<<"$(catalog_ids gaming)"; done
+for id in cpp python node java rust go dotnet php ruby kotlin swift; do
+  assert_true "Languages offers $id" grep -qx "$id" <<<"$(catalog_ids langs)"
+done
+for id in claude codex gemini copilot opencode goose aider; do
+  assert_true "AI agents offers $id" grep -qx "$id" <<<"$(catalog_ids ai)"
+done
+npm_deps=$(SOFTWARE_ITEMS="gemini"; chosen_by_source rpm)
+assert_true  "an npm agent brings Node.js and npm"   grep -qx nodejs24-npm <<<"$npm_deps"
+assert_eq "@google/gemini-cli" "$(SOFTWARE_ITEMS="gemini"; chosen_by_source npm)" "npm agents are installed with npm"
+assert_true  "a uv tool brings uv"                   grep -qx uv <<<"$(SOFTWARE_ITEMS="aider"; chosen_by_source rpm)"
+assert_true  "driver packages are checked too"       grep -qx akmod-wl <<<"$all"
+assert_true  "Terra allows the drivers it carries"   grep -q '\bxone\*' <<<"$allow"
+amd_main=$(DRIVER_ITEMS="amd-graphics"; main_dnf_packages)
+assert_true  "a chosen driver is installed"          grep -qx mesa-vulkan-drivers <<<"$amd_main"
+assert_false "AMD's codecs come by swap, not in the main transaction" grep -qx mesa-va-drivers-freeworld <<<"$amd_main"
 assert_eq "zen" "$(SOFTWARE_ITEMS="firefox zen"; DEFAULT_BROWSER=zen default_for browser)" "a chosen default wins"
 assert_eq "firefox" "$(SOFTWARE_ITEMS="firefox"; DEFAULT_BROWSER=zen default_for browser)" "an unticked default falls back"
 

@@ -5,6 +5,7 @@
 #   ./install.sh            the full-screen installer, in a terminal
 #   ./install.sh --plain    plain text, questions asked inline (`update` uses this)
 #   ./install.sh --dry-run  list what would be installed, change nothing
+#   ./install.sh --scan     list the hardware that needs extra drivers
 set -Eeuo pipefail
 
 # shellcheck source=lib/common.sh
@@ -88,6 +89,7 @@ dry_run() {
   echo "KDE Plasma fallback: ${DNF_PLASMA[*]}"
   echo "Flatpak apps: $(chosen_by_source flatpak | tr '\n' ' ')"
   echo "Vendor repos: $(chosen_by_source repo | tr '\n' ' ')"
+  echo "Drivers: $(for id in $(found_drivers); do driver_on "$id" && printf '%s, ' "${DRV_LABEL[$id]}"; done | sed 's/, $//')"
   echo
   echo "Steps: $(printf '%s, ' "${STEPS[@]%%|*}" | sed 's/, $//')"
   echo "Nothing was changed."
@@ -97,11 +99,12 @@ usage() { sed -n '/^# Usage/,/--dry-run/s/^# \?//p' "$0"; }
 
 main() {
   # A dry run changes nothing, not even the state folder.
-  case "${1:-}" in --dry-run | -h | --help) ;; *) migrate_state ;; esac
+  case "${1:-}" in --dry-run | --scan | -h | --help) ;; *) migrate_state ;; esac
   load_choices
   case "${1:-}" in
     --plain) plain_install ;;
     --dry-run) dry_run ;;
+    --scan) scan_report ;;
     -h | --help) usage ;;
     "")
       # The TUI needs a terminal; ASSUME=yes|no (unattended runs) and pipes get the plain installer.

@@ -35,14 +35,16 @@ tui_size() { TUI_H=24 TUI_W=80 TUI_C0=$((TUI_SB + 3)) TUI_CW=$((TUI_W - TUI_SB -
 tui_size
 TUI_SYSTEM="Fedora Linux 45" TUI_LOCALE=en_US.UTF-8 TUI_LAYOUT=us TUI_TZ=UTC TUI_ROOT_FS=btrfs TUI_HOME_FS=btrfs
 TUI_LAPTOP=1 TUI_GPU=none TUI_DM="" TUI_MIGRATE=""
-unset SOFTWARE_ITEMS
+unset SOFTWARE_ITEMS DRIVER_ITEMS
+hw_scan "8086 46a8 0300" "04f3 0c7e ff," "HP" ""
 tui_pages
 tui_defaults
 assert_true  "default apps start ticked"           test -n "${TUI_ON[firefox]}"
 assert_false "other apps start unticked"           test -n "${TUI_ON[brave]}"
-assert_eq "16" "${#TUI_WIZARD[@]}" "welcome, 10 menus, extras, look, review, install, done"
+assert_eq "19" "${#TUI_WIZARD[@]}" "welcome, 12 menus, drivers, extras, look, review, install, done"
 assert_eq "ghostty" "${TUI_DEFAULT[terminal]}" "Ghostty starts as the default terminal"
-assert_eq "no NVIDIA card" "${TUI_OFF_WHY[nvidia]}" "NVIDIA can't be ticked without a card"
+assert_true "the scanned Intel driver starts ticked" test -n "${TUI_ON[intel-graphics]}"
+assert_true "fingerprint login starts on where a reader was found" test -n "${TUI_ON[fingerprint]}"
 assert_eq "waterfall" "$PRESET_CHOICE" "a new install starts with the waterfall look"
 
 # shellcheck disable=SC2001 # a regex, not a fixed string
@@ -61,11 +63,18 @@ assert_eq "firefox" "${TUI_DEFAULT[browser]}" "unticking the default falls back 
 TUI_SEL=0; KEY=space; tui_list_key
 assert_eq "" "${TUI_DEFAULT[browser]}" "no browser ticked, no default"
 KEY=space; tui_list_key
-TUI_PAGE=9; TUI_SEL=14; TUI_TOP=0; tui_screen_list
-assert_true "a long menu scrolls to the cursor"     grep -q "Rust" <<<"$(plain)"
+TUI_PAGE=10; TUI_SEL=19; TUI_TOP=0; tui_screen_list
+assert_true "a long menu scrolls to the cursor"     grep -q "Julia" <<<"$(plain)"
+TUI_PAGE=13; TUI_SEL=0; TUI_TOP=0; tui_screen_list
+assert_true "the drivers page shows the scan"       grep -q "Intel graphics" <<<"$(plain)"
+hw_scan "" "" "" ""; TUI_SEL=0; tui_screen_list
+assert_true "a machine without extra drivers says so" grep -q "Nothing extra needed" <<<"$(plain)"
+KEY=space; tui_list_key
+assert_eq "13" "$TUI_PAGE" "keys on an empty drivers page don't fail"
+hw_scan "8086 46a8 0300" "04f3 0c7e ff," "HP" ""
 
 TUI_ON[steam]="" TUI_ON[docker]=""
-TUI_PAGE=13; tui_plan
+TUI_PAGE=16; tui_plan
 # shellcheck disable=SC2153 # set by tui_plan
 assert_false "no Steam once it is unticked"         grep -qx steam < <(printf '%s\n' "${TUI_PKGS[@]}")
 assert_false "no Docker repo once Docker is unticked" grep -qx docker < <(printf '%s\n' "${TUI_REPOS[@]}")
@@ -73,7 +82,7 @@ tui_screen_review
 assert_true "the review counts the packages"        grep -q "${#TUI_PKGS[@]}" <<<"$(plain)"
 assert_true "the review names the default browser"  grep -q "Firefox" <<<"$(plain)"
 
-TUI_OFF_WHY=() TUI_ON[home-snapshots]=1 TUI_ON[grub-btrfs]="" TUI_ON[nvidia]=""
+TUI_OFF_WHY=() TUI_ON[home-snapshots]=1 TUI_ON[grub-btrfs]="" TUI_ON[nvidia]="" TUI_ON[intel-graphics]=1
 before=$FAILS
 (
   tui_answers
@@ -81,6 +90,7 @@ before=$FAILS
   assert_eq "no" "$ANSWER_grub_btrfs" "an unticked extra becomes a no"
   assert_eq "firefox" "$DEFAULT_BROWSER" "the default browser goes to the install steps"
   assert_true "the chosen apps go to the install steps" grep -q "firefox" <<<"$SOFTWARE_ITEMS"
+  assert_true "the chosen drivers go to the install steps" grep -q "intel-graphics" <<<"$DRIVER_ITEMS"
   assert_eq "no" "$NVIDIA" "an unticked NVIDIA driver is skipped"
   assert_eq "yes" "$ASSUME" "the steps never wait for an answer"
   [[ $FAILS -eq $before ]]

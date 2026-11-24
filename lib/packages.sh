@@ -28,7 +28,8 @@ DNF_STORAGE=(kio-extras kio-fuse kamera gvfs
   udisks2 udisks2-btrfs ntfs-3g exfatprogs dosfstools udftools hfsplus-tools btrfs-progs xfsprogs
   cifs-utils nfs-utils samba-client fuse-sshfs libimobiledevice-utils ifuse unrar)
 DNF_CLI=(git gh wget2-wget curl fastfetch btop bat eza fzf ripgrep fd-find zoxide unzip 7zip bash-completion plocate rsync ImageMagick)
-DNF_MEDIA=(intel-media-driver libva-utils)
+# GPU drivers (Intel media driver, AMD codecs, NVIDIA) come from the driver scanner (lib/drivers.sh).
+DNF_MEDIA=(libva-utils)
 # AMD only: Fedora's mesa leaves out H.264/HEVC hardware decoding, RPM Fusion's build has it.
 DNF_AMD=(mesa-va-drivers-freeworld)
 DNF_SYSTEM=(fuse-libs avahi nss-mdns
@@ -59,13 +60,14 @@ all_dnf_packages() {
   printf '%s\n' "${DNF_BASE[@]}" "${DNF_DESKTOP[@]}" "${DNF_APPS[@]}" "${DNF_STORAGE[@]}" "${DNF_CLI[@]}" "${DNF_MEDIA[@]}" \
     "${DNF_SYSTEM[@]}" "${DNF_NVIDIA[@]}" "${DNF_SECUREBOOT[@]}" "${DNF_AMD[@]}" "${DNF_PLASMA[@]}" ffmpeg
   all_by_source rpm
+  all_driver_packages rpm
 }
 
 # terra_allow -> Terra's includepkgs: the Noctalia parts and every catalog app from Terra (chosen or not, so a later
 # choice works without touching the repo again).
 terra_allow() {
   local -a pkgs=("${TERRA_BASE[@]}")
-  mapfile -t -O "${#pkgs[@]}" pkgs < <(all_by_source terra)
+  mapfile -t -O "${#pkgs[@]}" pkgs < <(all_by_source terra; all_driver_packages terra)
   printf '%s*,' "${pkgs[@]}" | sed 's/,$//'
 }
 
@@ -73,7 +75,7 @@ terra_allow() {
 # the chosen apps.
 main_dnf_packages() {
   printf '%s\n' "${DNF_DESKTOP[@]}" "${DNF_APPS[@]}" "${DNF_STORAGE[@]}" "${DNF_CLI[@]}" "${DNF_SYSTEM[@]}"
-  chosen_by_source rpm
+  { chosen_by_source rpm; chosen_driver_packages rpm; } | awk '!seen[$0]++'
 }
 
 # Other desktops' shells, sessions and login managers. A dependency that drags one in (as GParted once did
@@ -138,7 +140,7 @@ install_packages() {
   sudo dnf install -y --allowerasing ffmpeg
   sudo dnf group install -y multimedia --setopt=install_weak_deps=False --exclude=PackageKit-gstreamer-plugin
   sudo dnf install -y "${DNF_MEDIA[@]}"
-  if has_amd_gpu "$(lspci -d ::03xx)" && ! rpm -q "${DNF_AMD[@]}" >/dev/null 2>&1; then
+  if driver_on amd-graphics && ! rpm -q "${DNF_AMD[@]}" >/dev/null 2>&1; then
     sudo dnf swap -y mesa-va-drivers "${DNF_AMD[@]}"
   fi
   # Minimal Install leaves out the firmware for Wi-Fi, Bluetooth and audio chips (e.g. Intel iwlwifi).

@@ -1,13 +1,16 @@
 # shellcheck shell=bash
 # The software menus: every optional app, its menu, where it comes from and whether it is ticked by default.
 # Stable first: Fedora ("dnf") and RPM Fusion ("rpmfusion"), then Terra ("terra"), then the vendor's own RPM repo ("repo:NAME"),
-# Flathub only for apps without an RPM ("flatpak"). "script:FN" runs FN (lib/apps.sh).
+# Flathub only for apps without an RPM ("flatpak"). "script" runs a function (lib/apps.sh); "npm" and "uvtool" install
+# command-line tools for your user (~/.local/bin) with npm or uv, which come along. An app in two menus lists both
+# ("creative,office").
 
 # Menus in order: "id|title".
 CATEGORIES=("terminal|Terminal" "browser|Browser" "files|Files" "office|Office & text" "media|Media"
-  "creative|Creative & recording" "chat|Communication" "gaming|Gaming" "dev|Development" "utils|Utilities")
+  "creative|Creative & recording" "chat|Communication" "gaming|Gaming" "dev|Development" "langs|Languages"
+  "ai|AI agents" "utils|Utilities")
 
-# "menu|id|label|default 1/0|role|source|packages|what it is". A role (terminal, browser, files, editor) means it can
+# "menus|id|label|default 1/0|role|source|packages|what it is". A role (terminal, browser, files, editor) means it can
 # be the default app for that job; the keybinds and "open with" follow the default.
 CATALOG=(
   "terminal|ghostty|Ghostty|1|terminal|terra|ghostty|Fast GPU terminal, tabs and splits, in the desktop's colors."
@@ -66,7 +69,7 @@ CATALOG=(
   "creative|audacity|Audacity|0||dnf|audacity|Audio recording and editing."
   "creative|darktable|darktable|0||dnf|darktable|Raw photo development."
   "creative|handbrake|HandBrake|0||rpmfusion|HandBrake-gui|Video converter."
-  "creative|artcraft|ArtCraft Launcher|0||script|install_artcraft|Alpha creative apps; AppImage checked against its checksum."
+  "creative,office|artcraft|ArtCraft Launcher|0||script|install_artcraft|Alpha creative apps; AppImage checked against its checksum."
 
   "chat|thunderbird|Thunderbird|1||dnf|thunderbird|Mail, calendar and contacts."
   "chat|betterbird|Betterbird|0||flatpak|eu.betterbird.Betterbird|Thunderbird with extra features."
@@ -78,6 +81,7 @@ CATALOG=(
   "chat|element|Element|0||flatpak|im.riot.Riot|Matrix chat."
   "chat|slack|Slack|0||flatpak|com.slack.Slack|Slack's app."
   "chat|zoom|Zoom|0||flatpak|us.zoom.Zoom|Zoom's app."
+  "chat|ferdium|Ferdium|0||flatpak|org.ferdium.Ferdium|All your messengers and web apps in one window."
 
   "gaming|steam|Steam|1||rpmfusion|steam|Valve's store and Proton."
   "gaming|gametools|Game tools|1||dnf|gamemode mangohud gamescope protontricks winetricks vulkan-tools|GameMode, MangoHud, Gamescope, Winetricks."
@@ -87,26 +91,52 @@ CATALOG=(
   "gaming|faugus|Faugus Launcher|1||terra|faugus-launcher|Simple launcher for Windows games."
   "gaming|bottles|Bottles|0||dnf|bottles|Windows apps in separate Wine prefixes."
   "gaming|prism|Prism Launcher|0||terra|prismlauncher|Minecraft with many instances and mods."
-  "gaming|retroarch|RetroArch|0||dnf|retroarch|Emulators for many consoles in one app."
-  "gaming|dolphinemu|Dolphin Emulator|0||dnf|dolphin-emu|GameCube and Wii."
-  "gaming|pcsx2|PCSX2|0||rpmfusion|pcsx2|PlayStation 2 emulator."
 
   "dev|vscode|VS Code|1|editor|repo:vscode|code|Microsoft's code editor, from Microsoft's repo."
-  "dev|buildtools|Build tools|1||dnf|gcc make|gcc and make."
-  "dev|python|Python|1||dnf|uv python3 python3.12 python3.13|Python 3.12 to 3.14 and uv."
-  "dev|node|Node.js|1||dnf|nodejs24 nodejs24-npm|Node.js 24 LTS and npm."
   "dev|docker|Docker|1||repo:docker|docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin|Docker Engine and Compose; starts on first use."
   "dev|podman|Podman + Distrobox|1||dnf|podman distrobox|Containers without a daemon; other distros in a box."
   "dev|jetbrains|JetBrains Toolbox|1||script|install_jetbrains_toolbox|Installs and updates IntelliJ, PyCharm and friends."
-  "dev|claude|Claude Code|1||script|install_claude_code|Anthropic's coding agent in the terminal."
   "dev|dbeaver|DBeaver|1||flatpak|io.dbeaver.DBeaverCommunity|Database client."
   "dev|codium|VSCodium|0|editor|terra|codium|VS Code without Microsoft's telemetry."
   "dev|zed|Zed|0|editor|terra|zed|Fast editor with collaboration and AI."
   "dev|neovim|Neovim|0||dnf|neovim|Vim, modernized."
   "dev|vim|Vim|0||dnf|vim-enhanced|The classic."
   "dev|helix|Helix|0||dnf|helix|Modal editor with language support built in."
-  "dev|rust|Rust|0||dnf|rustup|rustup, to install the Rust toolchain."
-  "dev|go|Go|0||dnf|golang|The Go toolchain."
+
+  "langs|cpp|C and C++|1||dnf|gcc gcc-c++ make cmake gdb clang|GCC, Clang, Make, CMake and GDB."
+  "langs|python|Python|1||dnf|uv python3 python3.12 python3.13|Python 3.12 to 3.14 and uv."
+  "langs|node|JavaScript and TypeScript|1||dnf|nodejs24 nodejs24-npm pnpm typescript|Node.js 24 LTS, npm, pnpm and TypeScript."
+  "langs|deno|Deno|0||terra|deno|JavaScript and TypeScript runtime with tooling built in."
+  "langs|java|Java|0||dnf|java-25-openjdk-devel maven|OpenJDK 25 LTS and Maven."
+  "langs|kotlin|Kotlin|0||terra|kotlin gradle|Kotlin compiler and Gradle."
+  "langs|rust|Rust|0||dnf|rust cargo rustfmt clippy rust-analyzer|Fedora's Rust toolchain with Cargo, Clippy and rust-analyzer."
+  "langs|go|Go|0||dnf|golang|The Go toolchain."
+  "langs|dotnet|C# and .NET|0||dnf|dotnet-sdk-10.0|.NET 10 SDK."
+  "langs|php|PHP|0||dnf|php-cli composer|PHP 8 and Composer."
+  "langs|ruby|Ruby|0||dnf|ruby ruby-devel rubygem-bundler|Ruby and Bundler."
+  "langs|zig|Zig|0||dnf|zig|Zig compiler."
+  "langs|lua|Lua|0||dnf|lua luarocks|Lua and LuaRocks."
+  "langs|swift|Swift|0||dnf|swift-lang|Swift toolchain."
+  "langs|dart|Dart|0||terra|dart|Dart SDK."
+  "langs|flutter|Flutter|0||terra|flutter|Flutter SDK for apps on every platform."
+  "langs|haskell|Haskell|0||dnf|ghc cabal-install|GHC and Cabal."
+  "langs|elixir|Elixir and Erlang|0||dnf|elixir erlang|Elixir on the Erlang VM."
+  "langs|r|R|0||dnf|R|Statistics and data analysis."
+  "langs|julia|Julia|0||dnf|julia|Fast numeric computing."
+  "langs|ocaml|OCaml|0||dnf|ocaml opam|OCaml and opam."
+
+  "ai|claude|Claude Code|1||script|install_claude_code|Anthropic's coding agent in the terminal."
+  "ai|codex|Codex|0||terra|codex|OpenAI's coding agent in the terminal."
+  "ai|gemini|Gemini CLI|0||npm|@google/gemini-cli|Google's coding agent in the terminal."
+  "ai|copilot|GitHub Copilot CLI|0||npm|@github/copilot|GitHub's coding agent in the terminal."
+  "ai|opencode|OpenCode|0||terra|opencode|Open-source coding agent for any model provider."
+  "ai|goose|Goose|0||dnf|goose|Open-source agent for code and everyday tasks, any model."
+  "ai|aider|Aider|0||uvtool|aider-chat|Pair programming in the terminal, commits with git."
+  "ai|qwen|Qwen Code|0||npm|@qwen-code/qwen-code|Alibaba's coding agent for Qwen models."
+  "ai|crush|Crush|0||npm|@charmland/crush|Charm's coding agent with a terminal UI."
+  "ai|cursor|Cursor|0|editor|terra|cursor|Code editor built around AI."
+  "ai|ollama|Ollama|0||dnf|ollama|Run language models locally."
+  "ai|jan|Jan|0||flatpak|ai.jan.Jan|Desktop chat app for local and cloud models."
 
   "utils|bitwarden|Bitwarden|1||flatpak|com.bitwarden.desktop|Password manager with sync."
   "utils|keepassxc|KeePassXC|0||dnf|keepassxc|Password manager in a local file."
@@ -187,7 +217,7 @@ catalog_index
 catalog_ids() {
   local id
   for id in "${CAT_IDS[@]}"; do
-    if [[ -z "${1:-}" || "${CAT_MENU[$id]}" == "$1" ]]; then echo "$id"; fi
+    if [[ -z "${1:-}" || ",${CAT_MENU[$id]}," == *",$1,"* ]]; then echo "$id"; fi
   done
 }
 
@@ -208,16 +238,19 @@ chosen_items() {
   for id in "${CAT_IDS[@]}"; do if item_on "$id"; then echo "$id"; fi; done
 }
 
-# chosen_by_source KIND -> the packages (or flatpak ids, script names, repo names) of chosen apps whose source
-# starts with KIND: dnf, terra, flatpak, script, repo. For "repo" it lists the repo names.
+# chosen_by_source KIND -> the packages (flatpak ids, script names, npm/uv packages, repo names) of chosen apps by
+# KIND: rpm (everything dnf installs), terra, flatpak, script, npm, uvtool, repo (the vendor repo names).
 chosen_by_source() {
   local id source pkgs
   while read -r id; do
     source=${CAT_SOURCE[$id]} pkgs=${CAT_PACKAGES[$id]}
     case "$1:$source" in
-      dnf:dnf | dnf:rpmfusion | terra:terra | flatpak:flatpak | rpm:dnf | rpm:rpmfusion | rpm:terra | rpm:repo:*)
+      terra:terra | flatpak:flatpak | npm:npm | uvtool:uvtool | rpm:dnf | rpm:rpmfusion | rpm:terra | rpm:repo:*)
         tr ' ' '\n' <<<"$pkgs"
         ;;
+      # npm and uv install the command-line agents, so they come along.
+      rpm:npm) printf '%s\n' nodejs24 nodejs24-npm ;;
+      rpm:uvtool) echo uv ;;
       script:script) echo "$pkgs" ;;
       repo:repo:*) echo "${source#repo:}" ;;
     esac
