@@ -63,6 +63,8 @@ assert_true "Qt and KDE apps use the kde platform theme" grep -qx 'QT_QPA_PLATFO
 assert_true "Umbriel sets Plasma's menu for Dolphin" grep -qx 'XDG_MENU_PREFIX = "plasma-"' "$defaults"
 assert_true "Noctalia starts with Umbriel" grep -qx '  "noctalia",' "$defaults"
 assert_false "no Hyprland tools in the Umbriel defaults" grep -qi 'hypr' "$defaults"
+assert_false "keybinds name no app directly" grep -qE 'spawn (ghostty|firefox|luciole|kate)' "$defaults"
+assert_true "Super+Return opens the default terminal" grep -qF '"Mod+Return" = { action = "spawn xdg-terminal-exec"' "$defaults"
 assert_true "Noctalia colors Umbriel" grep -qF '"umbriel"' config/noctalia/00-fedora-noctalia.toml
 assert_false "no Hyprland template any more" grep -qF '"hyprland"' config/noctalia/00-fedora-noctalia.toml
 assert_true "Noctalia writes the KDE color scheme" grep -qF '"kcolorscheme"' config/noctalia/00-fedora-noctalia.toml
@@ -81,6 +83,7 @@ cp config/umbriel/scripts/desks.sh "$cfg/umbriel/scripts/desks.sh"
 echo 'my own' >"$cfg/umbriel/scripts/dock.sh"
 link_umbriel_scripts "$PWD" "$cfg" 2>/dev/null
 assert_eq "$PWD/config/umbriel/scripts/desks.sh" "$(readlink "$cfg/umbriel/scripts/desks.sh")" "an unchanged copy becomes a link"
+assert_eq "$PWD/config/umbriel/scripts/open-default.sh" "$(readlink "$cfg/umbriel/scripts/open-default.sh")" "the default-app launcher is linked"
 assert_eq "my own" "$(cat "$cfg/umbriel/scripts/dock.sh")" "a changed script stays"
 assert_false "a changed script is not replaced by a link" test -L "$cfg/umbriel/scripts/dock.sh"
 

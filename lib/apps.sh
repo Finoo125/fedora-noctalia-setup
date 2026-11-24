@@ -95,10 +95,9 @@ install_cursors() {
 }
 
 install_apps() {
-  if group_on dev; then
-    install_jetbrains_toolbox
-    install_claude_code
-  fi
+  local fn
+  # Catalog apps that install themselves (JetBrains Toolbox, Claude Code, ArtCraft).
+  for fn in $(chosen_by_source script); do "$fn"; done
   install_nerd_font
   install_cursors
 }

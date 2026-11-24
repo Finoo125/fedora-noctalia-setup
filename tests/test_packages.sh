@@ -3,7 +3,9 @@ set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 source tests/lib.sh
 source lib/common.sh
+source lib/catalog.sh
 source lib/packages.sh
+unset SOFTWARE_ITEMS
 
 repo_list='repo id                 repo name                          status
 fedora                  Fedora 44 - x86_64                 enabled
@@ -29,13 +31,17 @@ assert_true  "the login unlocks the keyring"   grep -qx gnome-keyring-pam <<<"$a
 assert_true  "NAS files open in non-KDE apps"  grep -qx kio-fuse <<<"$all"
 assert_true  "btrfs gets scrubbed"             grep -qx btrfsmaintenance <<<"$all"
 
+allow=$(terra_allow)
 for pkg in noctalia-greeter umbriel-nightly xdg-desktop-portal-umbriel-nightly luciole-nightly ghostty \
-  signal-desktop heroic-games-launcher protonplus faugus-launcher mission-center; do
-  assert_true "Terra allows $pkg" grep -q "\b$pkg\*" <<<"$TERRA_ALLOW"
+  signal-desktop heroic-games-launcher protonplus faugus-launcher mission-center helium-browser-bin zen-browser; do
+  assert_true "Terra allows $pkg" grep -q "\b$pkg\*" <<<"$allow"
 done
-assert_false "noctalia is Fedora's stable build, never Terra's" grep -q '\bnoctalia\*' <<<"$TERRA_ALLOW"
-assert_false "Signal comes from Terra, not Flathub" grep -qx org.signal.Signal < <(printf '%s\n' "${FLATPAKS[@]}")
-assert_false "Discord comes from RPM Fusion, not Flathub" grep -qx com.discordapp.Discord < <(printf '%s\n' "${FLATPAKS[@]}")
+assert_false "noctalia is Fedora's stable build, never Terra's" grep -q '\bnoctalia\*' <<<"$allow"
+assert_false "Steam comes from RPM Fusion, never Terra" grep -q '\bsteam\*' <<<"$allow"
+assert_false "Discord comes from RPM Fusion, never Terra" grep -q '\bdiscord\*' <<<"$allow"
+flatpaks=$(all_by_source flatpak)
+assert_false "Signal comes from Terra, not Flathub" grep -qx org.signal.Signal <<<"$flatpaks"
+assert_false "Discord comes from RPM Fusion, not Flathub" grep -qx com.discordapp.Discord <<<"$flatpaks"
 
 transaction=' Package                Arch   Version            Repository      Size
 Installing:
@@ -50,17 +56,18 @@ assert_eq $'gnome-shell\ngdm' "$(foreign_desktop_packages <<<"$transaction")" "a
 assert_eq "" "$(grep -v 'gdm ' <<<"$transaction" | grep -v ' gnome-shell  ' | foreign_desktop_packages)" "gnome-shell-common alone is no desktop"
 assert_eq "" "$(grep -vE 'gnome-shell |gdm ' <<<"$transaction" | foreign_desktop_packages)" "a clean transaction passes"
 main=$(main_dnf_packages)
-assert_true  "Luciole is the file manager"                  grep -qx luciole-nightly <<<"$main"
+assert_true  "Luciole is a default file manager"            grep -qx luciole-nightly <<<"$main"
 assert_true  "the COPR's Luciole is replaced"               grep -qx luciole-git < <(printf '%s\n' "${REPLACED_PACKAGES[@]}")
 assert_true  "Hyprland is removed from an old install"      grep -qx hyprland < <(printf '%s\n' "${REPLACED_PACKAGES[@]}")
-assert_true  "Dolphin stays for Plasma and NAS shares"      grep -qx dolphin <<<"$main"
+assert_true  "Dolphin is a default for Plasma and NAS shares" grep -qx dolphin <<<"$main"
 assert_true  "KDE Partition Manager does the disks"         grep -qx kde-partitionmanager <<<"$main"
 for pkg in Thunar gparted xfce-polkit gnome-disk-utility gnome-software papers qview vlc qt6ct file-roller; do
-  assert_false "$pkg is replaced, not installed next to its KDE app" grep -qx "$pkg" <<<"$main"
+  assert_false "$pkg is not in a default install" grep -qx "$pkg" <<<"$main"
 done
+assert_true "a chosen VLC is installed, not removed as replaced" grep -qx vlc <<<"$(SOFTWARE_ITEMS="vlc"; main_dnf_packages)"
 assert_false "Plasma is its own transaction, not in the main install" grep -qx plasma-workspace <<<"$main"
 assert_true  "the Plasma fallback is checked in CI too"     grep -qx plasma-workspace <<<"$all"
-assert_eq "" "$(grep -xF -f <(printf '%s\n' "${REPLACED_PACKAGES[@]}") <<<"$all")" "nothing replaced is still installed"
+assert_eq "" "$(grep -xF -f <(printf '%s\n' "${REPLACED_PACKAGES[@]}") <<<"$(main_dnf_packages)")" "a default install brings nothing that counts as replaced"
 plasma_transaction=' Package                Arch   Version            Repository      Size
 Installing:
  plasma-workspace      x86_64 6.7.5-1.fc44       updates     20.0 MiB
@@ -86,18 +93,40 @@ assert_eq $'Thunar\ngnome-software\ngnome-software-fedora-langpacks' "$(removal_
   "dependent packages count as removed too"
 assert_false "NVIDIA drivers are not in the main install"   grep -qx akmod-nvidia <<<"$main"
 
-# Software groups: everything by default, only the chosen ones otherwise; the base is always there.
-for group in $ALL_GROUPS; do assert_true "group $group is on by default" group_on "$group"; done
+# The menus: catalog defaults without a choice, exactly the chosen apps with one; the base is always there.
 assert_true  "Steam is in a default install"          grep -qx steam <<<"$main"
-lean=$(SOFTWARE_GROUPS="printing"; main_dnf_packages)
-assert_false "no Steam without the gaming group"      grep -qx steam <<<"$lean"
-assert_false "no Docker without the dev group"        grep -qx docker-ce <<<"$lean"
-assert_true  "printing comes with its group"          grep -qx cups <<<"$lean"
+assert_true  "Firefox is in a default install"        grep -qx firefox <<<"$main"
+assert_false "Brave isn't ticked by default"          grep -qx brave-browser <<<"$main"
+lean=$(SOFTWARE_ITEMS="brave printing"; main_dnf_packages)
+assert_false "no Steam when it isn't chosen"          grep -qx steam <<<"$lean"
+assert_false "no Docker when it isn't chosen"         grep -qx docker-ce <<<"$lean"
+assert_true  "a chosen app's packages come along"     grep -qx cups <<<"$lean"
+assert_true  "a vendor repo's app is installed"       grep -qx brave-browser <<<"$lean"
+assert_eq "brave" "$(SOFTWARE_ITEMS="brave printing"; chosen_by_source repo)" "only the chosen vendor repos are added"
 assert_true  "the desktop is always installed"        grep -qx umbriel-nightly <<<"$lean"
-assert_true  "KDE apps are always installed"          grep -qx dolphin <<<"$lean"
-none=$(SOFTWARE_GROUPS=""; main_dnf_packages)
-assert_false "an empty choice means no groups, not all" grep -qx cups <<<"$none"
-assert_eq "$(sort <<<"$all" | uniq -d)" "" "groups don't repeat base packages"
+assert_true  "the base KDE tools are always installed" grep -qx ark <<<"$lean"
+none=$(SOFTWARE_ITEMS=""; main_dnf_packages)
+assert_false "an empty choice means no apps, not the defaults" grep -qx cups <<<"$none"
+assert_eq "" "$(SOFTWARE_ITEMS=""; chosen_by_source flatpak)" "no Flatpaks without a choice of one"
+assert_eq "$(sort <<<"$all" | uniq -d)" "" "menus don't repeat base packages"
+
+# The catalog itself.
+assert_eq "" "$(printf '%s\n' "${CAT_IDS[@]}" | sort | uniq -d)" "every app id is unique"
+for id in "${CAT_IDS[@]}"; do
+  case "${CAT_SOURCE[$id]}" in
+    dnf | rpmfusion | terra | flatpak | script | repo:vscode | repo:docker | repo:brave | repo:vivaldi | repo:chrome | repo:edge) ;;
+    *) assert_eq "a known source" "${CAT_SOURCE[$id]}" "$id has a known source" ;;
+  esac
+  [[ " terminal browser files office media creative chat gaming dev utils " == *" ${CAT_MENU[$id]} "* ]] ||
+    assert_eq "a known menu" "${CAT_MENU[$id]}" "$id is in a known menu"
+done
+for fn in $(all_by_source script); do assert_true "script app $fn exists" bash -c "source lib/common.sh; source lib/apps.sh; declare -F $fn"; done
+assert_eq "ghostty" "$(default_for terminal)" "Ghostty is the default terminal"
+assert_eq "firefox" "$(default_for browser)" "Firefox is the default browser"
+assert_eq "luciole" "$(default_for files)" "Luciole is the default file manager"
+assert_eq "kate" "$(default_for editor)" "Kate is the default editor"
+assert_eq "zen" "$(SOFTWARE_ITEMS="firefox zen"; DEFAULT_BROWSER=zen default_for browser)" "a chosen default wins"
+assert_eq "firefox" "$(SOFTWARE_ITEMS="firefox"; DEFAULT_BROWSER=zen default_for browser)" "an unticked default falls back"
 
 amd='03:00.0 VGA compatible controller: Advanced Micro Devices, Inc. [AMD/ATI] Navi 22 [Radeon RX 6700 XT] (rev c1)'
 intel='00:02.0 VGA compatible controller: Intel Corporation Alder Lake-UP3 GT2 [Iris Xe Graphics] (rev 0c)'

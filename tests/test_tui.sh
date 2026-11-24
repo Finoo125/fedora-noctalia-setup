@@ -10,6 +10,7 @@ for lib in lib/*.sh; do [[ "$lib" == lib/common.sh ]] || source "$lib"; done
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 STATE_DIR="$tmp/state" LOG_FILE="$tmp/install.log" HOME="$tmp/home"
 STEPS=("Language, keyboard|setup_locale" "Packages|install_packages" "NVIDIA|setup_nvidia")
+TUI_GPU=none
 
 assert_eq "truecolor" "$(tui_color_mode xterm-256color truecolor)" "COLORTERM=truecolor gets true color"
 assert_eq "256" "$(tui_color_mode xterm-256color '')" "a 256-color terminal gets 256 colors"
@@ -34,9 +35,13 @@ tui_size() { TUI_H=24 TUI_W=80 TUI_C0=$((TUI_SB + 3)) TUI_CW=$((TUI_W - TUI_SB -
 tui_size
 TUI_SYSTEM="Fedora Linux 45" TUI_LOCALE=en_US.UTF-8 TUI_LAYOUT=us TUI_TZ=UTC TUI_ROOT_FS=btrfs TUI_HOME_FS=btrfs
 TUI_LAPTOP=1 TUI_GPU=none TUI_DM="" TUI_MIGRATE=""
-unset SOFTWARE_GROUPS
+unset SOFTWARE_ITEMS
+tui_pages
 tui_defaults
-assert_true  "groups start on"                     test -n "${TUI_ON[gaming]}"
+assert_true  "default apps start ticked"           test -n "${TUI_ON[firefox]}"
+assert_false "other apps start unticked"           test -n "${TUI_ON[brave]}"
+assert_eq "16" "${#TUI_WIZARD[@]}" "welcome, 10 menus, extras, look, review, install, done"
+assert_eq "ghostty" "${TUI_DEFAULT[terminal]}" "Ghostty starts as the default terminal"
 assert_eq "no NVIDIA card" "${TUI_OFF_WHY[nvidia]}" "NVIDIA can't be ticked without a card"
 assert_eq "waterfall" "$PRESET_CHOICE" "a new install starts with the waterfall look"
 
@@ -45,27 +50,40 @@ plain() { sed -e 's/\x1b\[[0-9;?]*[A-Za-z]/ /g' <<<"$TUI_BUF"; }
 TUI_BTN=0; tui_screen_welcome
 assert_true "welcome greets"                        grep -q "Welcome" <<<"$(plain)"
 assert_false "no migration box on a new machine"    grep -q "fedora-hyprland found" <<<"$(plain)"
-TUI_SEL=$(tui_next_opt 0 1)
-assert_eq "4" "$TUI_SEL" "the cursor starts on the first group, not a heading"
-assert_eq "4" "$(tui_next_opt 4 -1)" "it can't move above the first option"
-tui_screen_software
-assert_true "the software screen lists Gaming"      grep -q "Gaming" <<<"$(plain)"
+TUI_PAGE=2; TUI_SEL=0; TUI_TOP=0; tui_screen_list
+assert_true "the browser menu lists Helium"         grep -q "Helium" <<<"$(plain)"
+assert_true "and says where it comes from"          grep -q "Terra" <<<"$(plain)"
+TUI_SEL=6; KEY=d; tui_list_key
+assert_eq "vivaldi" "${TUI_DEFAULT[browser]}" "D makes the highlighted browser the default"
+assert_true "and ticks it"                          test -n "${TUI_ON[vivaldi]}"
+KEY=space; tui_list_key
+assert_eq "firefox" "${TUI_DEFAULT[browser]}" "unticking the default falls back to the next ticked one"
+TUI_SEL=0; KEY=space; tui_list_key
+assert_eq "" "${TUI_DEFAULT[browser]}" "no browser ticked, no default"
+KEY=space; tui_list_key
+TUI_PAGE=9; TUI_SEL=14; TUI_TOP=0; tui_screen_list
+assert_true "a long menu scrolls to the cursor"     grep -q "Rust" <<<"$(plain)"
 
-TUI_ON[gaming]="" TUI_ON[dev]=""
-tui_plan
-assert_eq "printing flatpak" "$SOFTWARE_GROUPS" "the review installs the ticked groups"
-assert_false "no Steam once gaming is unticked"     grep -qx steam < <(printf '%s\n' "${TUI_PKGS[@]}")
+TUI_ON[steam]="" TUI_ON[docker]=""
+TUI_PAGE=13; tui_plan
+# shellcheck disable=SC2153 # set by tui_plan
+assert_false "no Steam once it is unticked"         grep -qx steam < <(printf '%s\n' "${TUI_PKGS[@]}")
+assert_false "no Docker repo once Docker is unticked" grep -qx docker < <(printf '%s\n' "${TUI_REPOS[@]}")
 tui_screen_review
 assert_true "the review counts the packages"        grep -q "${#TUI_PKGS[@]}" <<<"$(plain)"
+assert_true "the review names the default browser"  grep -q "Firefox" <<<"$(plain)"
 
-TUI_OFF_WHY=() TUI_ON[home-snapshots]=1 TUI_ON[artcraft]="" TUI_ON[nvidia]=""
+TUI_OFF_WHY=() TUI_ON[home-snapshots]=1 TUI_ON[grub-btrfs]="" TUI_ON[nvidia]=""
+before=$FAILS
 (
   tui_answers
   assert_eq "yes" "$ANSWER_home_snapshots" "a ticked extra becomes a yes"
-  assert_eq "no" "$ANSWER_artcraft" "an unticked extra becomes a no"
+  assert_eq "no" "$ANSWER_grub_btrfs" "an unticked extra becomes a no"
+  assert_eq "firefox" "$DEFAULT_BROWSER" "the default browser goes to the install steps"
+  assert_true "the chosen apps go to the install steps" grep -q "firefox" <<<"$SOFTWARE_ITEMS"
   assert_eq "no" "$NVIDIA" "an unticked NVIDIA driver is skipped"
   assert_eq "yes" "$ASSUME" "the steps never wait for an answer"
-  [[ $FAILS -eq 0 ]]
+  [[ $FAILS -eq $before ]]
 ) || FAILS=$((FAILS + 1))
 
 printf '%s\n' '==> Packages' '[ 98/157] Installing umbriel-nightly' >"$LOG_FILE"

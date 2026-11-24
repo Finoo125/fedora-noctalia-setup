@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# CI only (fedora:45 container, runs as root): adds the installer's repos with the real setup_repos,
-# then checks that every dnf package and Flatpak the installer wants actually exists.
+# CI only (fedora:45 container, runs as root): adds the installer's repos with the real setup_repos, every vendor
+# repo included, then checks that every dnf package and Flatpak any menu offers actually exists.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 dnf install -y sudo
 source lib/common.sh
+source lib/catalog.sh
 source lib/packages.sh
+SOFTWARE_ITEMS="${CAT_IDS[*]}"
 setup_repos
 
 dnf repo list --enabled | grep -q '^terra ' || { echo "Terra repo is not enabled"; exit 1; }
@@ -19,7 +21,7 @@ for p in "${wanted[@]}"; do
   if [[ "$p" == *.i686 ]]; then pattern="^${p//./\\.}$"; else pattern="^${p//./\\.}\\."; fi
   grep -qE "$pattern" <<<"$available" || { echo "missing dnf package: $p"; missing=1; }
 done
-for app in "${FLATPAKS[@]}" "${FLATPAK_THEMES[@]}"; do
+for app in $(all_by_source flatpak) "${FLATPAK_THEMES[@]}"; do
   flatpak remote-info flathub "$app" >/dev/null 2>&1 || { echo "missing flatpak: $app"; missing=1; }
 done
 exit $missing

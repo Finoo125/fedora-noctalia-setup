@@ -5,7 +5,6 @@
 
 E=$'\e'
 TUI_SB=26 # sidebar width, its border included
-TUI_WIZARD=("Welcome" "Desktop & software" "Look" "Review" "Install" "Done")
 
 # The desktop's Ayu colors; the 16-color codes are for the Linux console and terminals without 256 colors.
 declare -gA TUI_HEX=([page]=0B0E14 [surface]=11151C [line]=273747 [fg]=BFBDB6 [bright]=E6E1CF [muted]=8A9199
@@ -56,10 +55,10 @@ tui_colors() {
 tui_glyphs() {
   if [[ "$1" == linux ]]; then
     G_DONE='+' G_CUR='>' G_TODO='-' G_RUN='*' G_FAIL='x' G_SKIP='-' G_LOCK='#' G_V='|' G_H='-' G_TL='+' G_TR='+'
-    G_BL='+' G_BR='+' G_FULL='#' G_EMPTY='.' G_DOT='-' G_PTR='>' G_UP='^' G_DOWN='v'
+    G_BL='+' G_BR='+' G_FULL='#' G_EMPTY='.' G_DOT='-' G_PTR='>' G_UP='^' G_DOWN='v' G_STAR='*'
   else
     G_DONE='✓' G_CUR='●' G_TODO='○' G_RUN='◐' G_FAIL='✗' G_SKIP='–' G_LOCK='■' G_V='│' G_H='─' G_TL='┌' G_TR='┐'
-    G_BL='└' G_BR='┘' G_FULL='█' G_EMPTY='░' G_DOT='·' G_PTR='▸' G_UP='↑' G_DOWN='↓'
+    G_BL='└' G_BR='┘' G_FULL='█' G_EMPTY='░' G_DOT='·' G_PTR='▸' G_UP='↑' G_DOWN='↓' G_STAR='★'
   fi
 }
 
@@ -248,6 +247,7 @@ tui_read_key() {
     $'\t') KEY=tab ;;
     $'\x7f' | $'\b') KEY=back ;;
     q | Q) KEY=q ;;
+    d | D) KEY=d ;;
     k) KEY=up ;;
     j) KEY=down ;;
     *) KEY=other ;;
@@ -294,23 +294,37 @@ tui_detect() {
     [[ -d "$OLD_STATE_DIR" || -d "$HOME/.local/share/fedora-hyprland" ]]; then TUI_MIGRATE=1; fi
 }
 
-# The rows of the software screen: "kind|id|label". Kinds: head, lock, opt.
-TUI_SW_ROWS=("head||Desktop" "lock|umbriel|Umbriel + Noctalia" "lock|plasma|KDE Plasma fallback"
-  "head||Software" "opt|gaming|Gaming" "opt|dev|Development" "opt|printing|Printing and scanners"
-  "opt|flatpak|Flatpak apps" "opt|nvidia|NVIDIA driver"
-  "head||Extras" "opt|fingerprint|Fingerprint login" "opt|home-snapshots|Hourly snapshots of /home"
-  "opt|grub-btrfs|Snapshots in the boot menu" "opt|artcraft|ArtCraft Launcher")
-declare -gA TUI_ON TUI_OFF_WHY
+# The wizard's pages: welcome, one per software menu, extras, look, review; the sidebar adds Install and Done.
+tui_pages() {
+  local menu
+  TUI_PAGES=(welcome) TUI_WIZARD=(Welcome)
+  for menu in "${CATEGORIES[@]}"; do
+    TUI_PAGES+=("menu:${menu%%|*}")
+    TUI_WIZARD+=("${menu#*|}")
+  done
+  TUI_PAGES+=(extras look review)
+  TUI_WIZARD+=(Extras Look Review Install Done)
+}
 
-# tui_defaults: every choice's starting value: saved groups, remembered "no"s, what the hardware allows.
+# tui_step INDEX -> "step N of M" for the top bar.
+tui_step() { echo "step $(($1 + 1)) of ${#TUI_WIZARD[@]}"; }
+
+# The extras: "id|label|what it does". They are questions, not apps.
+TUI_EXTRAS=("nvidia|NVIDIA driver|RPM Fusion's driver for RTX 20 to RTX 50 cards: open kernel modules, CUDA, NVENC. With Secure Boot you set a one-time password."
+  "fingerprint|Fingerprint login|Unlock sudo, the login and the lock screen with a finger. Enrolled after the install, when this window closes."
+  "home-snapshots|Hourly snapshots of /home|Every hour, kept 7 days, so a deleted file can be restored. No backup: Pika Backup copies to another drive."
+  "grub-btrfs|Snapshots in the boot menu|A Fedora snapshots entry in the boot menu, to start the system as it was before an update.")
+declare -gA TUI_ON TUI_OFF_WHY TUI_DEFAULT
+ROLES=(terminal browser files editor)
+
+# tui_defaults: every choice's starting value: saved apps, remembered "no"s, what the hardware allows.
 tui_defaults() {
-  local key
-  for key in $ALL_GROUPS; do if group_on "$key"; then TUI_ON[$key]=1; else TUI_ON[$key]=""; fi; done
+  local id key role
+  for id in "${CAT_IDS[@]}"; do if item_on "$id"; then TUI_ON[$id]=1; else TUI_ON[$id]=""; fi; done
+  for role in "${ROLES[@]}"; do TUI_DEFAULT[$role]=$(default_for "$role"); done
   for key in fingerprint home-snapshots grub-btrfs nvidia; do
     if [[ -f "$STATE_DIR/declined-$key" ]]; then TUI_ON[$key]=""; else TUI_ON[$key]=1; fi
   done
-  TUI_ON[artcraft]=""
-  [[ -f "$ARTCRAFT_APPIMAGE" ]] && TUI_OFF_WHY[artcraft]="installed"
   case "$TUI_GPU" in
     none) TUI_OFF_WHY[nvidia]="no NVIDIA card" ;;
     legacy) TUI_OFF_WHY[nvidia]="card too old" ;;
@@ -326,21 +340,70 @@ tui_defaults() {
   PRESET_CHOICE=$(basename "$(readlink "$HOME/.config/noctalia/30-preset.toml" 2>/dev/null || echo waterfall.toml)" .toml)
 }
 
-# tui_detail ID -> "description|packages" for the software screen's right side.
-tui_detail() {
-  case "$1" in
-    umbriel) echo "The compositor, the Noctalia shell, its login screen and Luciole. Umbriel and Luciole are nightly builds from Terra; Noctalia is Fedora's stable build.|umbriel-nightly noctalia noctalia-greeter luciole-nightly" ;;
-    plasma) echo "A minimal KDE Plasma session on the login screen, for when Umbriel or a game misbehaves. Same colors, cursor and passwords.|${DNF_PLASMA[*]}" ;;
-    gaming) echo "Steam, Lutris, Heroic, ProtonPlus and Faugus, with GameMode, MangoHud and Gamescope.|${DNF_GAMING[*]}" ;;
-    dev) echo "VS Code, Docker, Podman, Python, Node.js, GitHub CLI, plus JetBrains Toolbox and Claude Code.|${DNF_DEV[*]}" ;;
-    printing) echo "CUPS with HP, Gutenprint and common drivers, and a PDF printer.|${DNF_PRINTING[*]}" ;;
-    flatpak) echo "Apps without an RPM, from Flathub.|${FLATPAKS[*]}" ;;
-    nvidia) echo "RPM Fusion's driver for RTX 20 to RTX 50 cards: open kernel modules, CUDA, NVENC. With Secure Boot you set a one-time password.|${DNF_NVIDIA[*]}" ;;
-    fingerprint) echo "Unlock sudo, the login and the lock screen with a finger. Enrolled after the install, when the window closes." ;;
-    home-snapshots) echo "Snapshots of /home every hour, kept 7 days, so a deleted file can be restored. No backup: Pika Backup copies to another drive." ;;
-    grub-btrfs) echo "A Fedora snapshots entry in the boot menu, to start the system as it was before an update." ;;
-    artcraft) echo "Alpha creative apps, as an AppImage checked against its published checksum." ;;
+# tui_sync: SOFTWARE_ITEMS and DEFAULT_<ROLE> from the ticks. A default that was unticked moves to the first
+# ticked app with that role.
+tui_sync() {
+  local id role var
+  SOFTWARE_ITEMS=""
+  for id in "${CAT_IDS[@]}"; do
+    if [[ -n "${TUI_ON[$id]:-}" ]]; then SOFTWARE_ITEMS+="${SOFTWARE_ITEMS:+ }$id"; fi
+  done
+  for role in "${ROLES[@]}"; do
+    if [[ -z "${TUI_ON[${TUI_DEFAULT[$role]:-none}]:-}" ]]; then
+      TUI_DEFAULT[$role]=""
+      for id in "${CAT_IDS[@]}"; do
+        if [[ "${CAT_ROLE[$id]}" == "$role" && -n "${TUI_ON[$id]:-}" ]]; then TUI_DEFAULT[$role]=$id; break; fi
+      done
+    fi
+    var="DEFAULT_${role^^}"
+    printf -v "$var" '%s' "${TUI_DEFAULT[$role]}"
+  done
+}
+
+# tui_source_label ID -> where an app comes from, in a word or two.
+tui_source_label() {
+  case "${CAT_SOURCE[$1]}" in
+    dnf) echo Fedora ;;
+    rpmfusion) echo "RPM Fusion" ;;
+    terra) echo Terra ;;
+    flatpak) echo Flathub ;;
+    script) echo download ;;
+    repo:vscode | repo:edge) echo Microsoft ;;
+    repo:chrome) echo Google ;;
+    repo:docker) echo Docker ;;
+    repo:brave) echo Brave ;;
+    repo:vivaldi) echo Vivaldi ;;
+    *) echo "${CAT_SOURCE[$1]}" ;;
   esac
+}
+
+# tui_repo_label NAME -> a vendor repo's name for people.
+tui_repo_label() {
+  case "$1" in
+    vscode) echo "VS Code" ;; edge) echo "Microsoft Edge" ;; chrome) echo "Google Chrome" ;;
+    docker) echo Docker ;; brave) echo Brave ;; vivaldi) echo Vivaldi ;; *) echo "$1" ;;
+  esac
+}
+
+# tui_page_ids -> TUI_IDS: the rows of the current menu or extras page.
+tui_page_ids() {
+  local entry
+  TUI_IDS=()
+  case "${TUI_PAGES[TUI_PAGE]}" in
+    menu:*) mapfile -t TUI_IDS < <(catalog_ids "${TUI_PAGES[TUI_PAGE]#menu:}") ;;
+    extras) for entry in "${TUI_EXTRAS[@]}"; do TUI_IDS+=("${entry%%|*}"); done ;;
+  esac
+}
+
+# tui_extra ID FIELD -> label or about of an extra.
+tui_extra() {
+  local entry id label about
+  for entry in "${TUI_EXTRAS[@]}"; do
+    IFS='|' read -r id label about <<<"$entry"
+    if [[ "$id" == "$1" ]]; then
+      if [[ "$2" == label ]]; then echo "$label"; else echo "$about"; fi
+    fi
+  done
 }
 
 # --- Screens. Each tui_screen_* draws one frame from the current state.
@@ -358,7 +421,7 @@ tui_found() {
 
 tui_screen_welcome() {
   tui_frame_begin
-  tui_topbar "step 1 of 6"
+  tui_topbar "$(tui_step 0)"
   tui_wizard_sidebar 0
   TUI_ROW=$TUI_R0
   tui_text "bright,,b" "Welcome"
@@ -388,50 +451,90 @@ tui_screen_welcome() {
   tui_footer "nothing changes before Install now" "Enter|press" "Tab|next button" "Esc|quit"
 }
 
-tui_screen_software() {
-  local i kind id label r=$TUI_R0 mark style note listw=34 dcol dw detail
+# tui_screen_list: a menu or the extras: ticks on the left (scrolling), the highlighted row's details.
+tui_screen_list() {
+  local i id r mark star style role src label off wide listw top bottom rows dcol dw roles="" page_title
+  tui_page_ids
+  page_title=${TUI_WIZARD[TUI_PAGE]}
   tui_frame_begin
-  tui_topbar "step 2 of 6"
-  tui_wizard_sidebar 1
-  for i in "${!TUI_SW_ROWS[@]}"; do
-    IFS='|' read -r kind id label <<<"${TUI_SW_ROWS[i]}"
-    note=""
-    case "$kind" in
-      head) tui_put "$r" "$TUI_C0" "$listw" muted "$label" ;;
-      lock) tui_put "$r" "$TUI_C0" "$listw" muted "[$G_LOCK] $label" ;;
-      opt)
-        if [[ -n "${TUI_ON[$id]:-}" ]]; then mark="x"; else mark=" "; fi
-        note=${TUI_OFF_WHY[$id]:-}
-        if ((i == TUI_SEL)); then
-          style="page,accent,b"
-        elif [[ -n "$note" ]]; then
-          style=muted
-        else
-          style="fg"
-        fi
-        tui_put "$r" "$TUI_C0" "$listw" "$style" "$(printf '[%s] %-*s' "$mark" $((listw - 4)) "$label")"
-        if [[ -n "$note" ]]; then tui_put "$r" $((TUI_C0 + listw + 1)) 20 muted "$note"; fi
-        ;;
-    esac
+  tui_topbar "$(tui_step "$TUI_PAGE")"
+  tui_wizard_sidebar "$TUI_PAGE"
+  for id in "${TUI_IDS[@]}"; do
+    role=${CAT_ROLE[$id]:-}
+    if [[ -n "$role" && " $roles " != *" $role "* ]]; then roles+="${roles:+ }$role"; fi
+  done
+  if [[ -n "$roles" ]]; then
+    tui_put "$TUI_R0" "$TUI_C0" "$TUI_CW" muted "$page_title: tick any. $G_STAR = the default ${roles// /, } (D)."
+  elif [[ "${TUI_PAGES[TUI_PAGE]}" == extras ]]; then
+    tui_put "$TUI_R0" "$TUI_C0" "$TUI_CW" muted "Extras: things to set up besides the apps."
+  else
+    tui_put "$TUI_R0" "$TUI_C0" "$TUI_CW" muted "$page_title: tick any."
+  fi
+  wide=0
+  if ((TUI_CW >= 64)); then wide=1; fi
+  top=$((TUI_R0 + 2))
+  if ((wide)); then
+    listw=$((TUI_CW >= 84 ? 40 : 34)) bottom=$TUI_R1
+  else
+    listw=$TUI_CW bottom=$((TUI_R1 - 5))
+  fi
+  rows=$((bottom - top + 1))
+  ((TUI_SEL < TUI_TOP)) && TUI_TOP=$TUI_SEL
+  ((TUI_SEL >= TUI_TOP + rows)) && TUI_TOP=$((TUI_SEL - rows + 1))
+  r=$top
+  for ((i = TUI_TOP; i < ${#TUI_IDS[@]} && r <= bottom; i++)); do
+    id=${TUI_IDS[i]}
+    mark=" " star=" "
+    if [[ -n "${TUI_ON[$id]:-}" ]]; then mark=x; fi
+    role=${CAT_ROLE[$id]:-}
+    if [[ -n "$role" && "${TUI_DEFAULT[$role]:-}" == "$id" ]]; then star=$G_STAR; fi
+    off=${TUI_OFF_WHY[$id]:-}
+    if [[ -n "${CAT_LABEL[$id]:-}" ]]; then label=${CAT_LABEL[$id]} src=$(tui_source_label "$id"); else label=$(tui_extra "$id" label) src=$off; fi
+    if ((i == TUI_SEL)); then style="page,accent,b"; elif [[ -n "$off" ]]; then style=muted; else style="fg"; fi
+    tui_put "$r" "$TUI_C0" "$listw" "$style" "$(printf '[%s] %s %-*s' "$mark" "$star" $((listw - 6)) "$label")"
+    tui_put "$r" $((TUI_C0 + listw - ${#src})) "${#src}" "${style/fg/muted}" "$src"
     r=$((r + 1))
   done
-  # The highlighted row's details: to the right when there is room, else under the list.
-  IFS='|' read -r kind id label <<<"${TUI_SW_ROWS[TUI_SEL]}"
-  detail=$(tui_detail "$id")
-  if ((TUI_CW >= listw + 40)); then
-    dcol=$((TUI_C0 + listw + 4)) dw=$((TUI_CW - listw - 4))
-    TUI_ROW=$TUI_R0 TUI_COL=$dcol TUI_TW=$dw
+  if ((TUI_TOP > 0)); then tui_put $((top - 1)) $((TUI_C0 + listw - 6)) 6 muted "$G_UP more"; fi
+  if ((TUI_TOP + rows < ${#TUI_IDS[@]})); then tui_put $((bottom + 1)) $((TUI_C0 + listw - 6)) 6 muted "$G_DOWN more"; fi
+  # Details of the highlighted row.
+  id=${TUI_IDS[TUI_SEL]}
+  if ((wide)); then
+    dcol=$((TUI_C0 + listw + 3)) dw=$((TUI_CW - listw - 3)) TUI_ROW=$top
   else
-    TUI_ROW=$((r + 1)) TUI_COL=$TUI_C0 TUI_TW=$TUI_CW
+    dcol=$TUI_C0 dw=$TUI_CW TUI_ROW=$((bottom + 2))
   fi
-  tui_text "bright,,b" "$label"
-  tui_text fg "${detail%%|*}"
-  if [[ "$detail" == *"|"* && -n "${detail#*|}" ]]; then
-    tui_gap
-    tui_text cyan "${detail#*|}"
+  TUI_COL=$dcol TUI_TW=$dw
+  if [[ -n "${CAT_LABEL[$id]:-}" ]]; then
+    tui_text "bright,,b" "${CAT_LABEL[$id]}"
+    tui_text fg "${CAT_ABOUT[$id]}"
+    if ((wide)); then
+      tui_gap
+      tui_text muted "from $(tui_source_label "$id")"
+      case "${CAT_SOURCE[$id]}" in
+        script) ;;
+        *) tui_text cyan "${CAT_PACKAGES[$id]}" ;;
+      esac
+      role=${CAT_ROLE[$id]:-}
+      if [[ -n "$role" ]]; then
+        tui_gap
+        if [[ "${TUI_DEFAULT[$role]:-}" == "$id" ]]; then
+          tui_text accent "$G_STAR the default $role"
+        else
+          tui_text muted "D makes it the default $role."
+        fi
+      fi
+    fi
+  else
+    tui_text "bright,,b" "$(tui_extra "$id" label)"
+    tui_text fg "$(tui_extra "$id" about)"
   fi
   TUI_COL="" TUI_TW=""
-  tui_footer "" "$G_UP$G_DOWN|move" "Space|tick" "Enter|continue" "Backspace|back" "Esc|quit"
+  if [[ -n "$roles" ]]; then
+    tui_footer "" "$G_UP$G_DOWN|move" "Space|tick" "D|default" "Enter|next" "Backspace|back" "Esc|quit"
+  else
+    tui_footer "" "$G_UP$G_DOWN|move" "Space|tick" "Enter|next" "Backspace|back" "Esc|quit"
+  fi
 }
 
 # Presets: TUI_PRESETS=(name...), TUI_PRESET_DESC[name]=description; "off" is the plain look.
@@ -450,8 +553,8 @@ tui_load_presets() {
 tui_screen_look() {
   local i name r=$TUI_R0 style mark
   tui_frame_begin
-  tui_topbar "step 3 of 6"
-  tui_wizard_sidebar 2
+  tui_topbar "$(tui_step "$TUI_PAGE")"
+  tui_wizard_sidebar "$TUI_PAGE"
   tui_put "$r" "$TUI_C0" "$TUI_CW" muted "Choose a look. Switch later with noctalia-preset."
   r=$((r + 2))
   for i in "${!TUI_PRESETS[@]}"; do
@@ -474,41 +577,46 @@ tui_screen_look() {
 
 # tui_plan: the review's numbers and lists, from the current choices.
 tui_plan() {
-  local p
-  SOFTWARE_GROUPS=""
-  for p in $ALL_GROUPS; do if [[ -n "${TUI_ON[$p]:-}" ]]; then SOFTWARE_GROUPS+="${SOFTWARE_GROUPS:+ }$p"; fi; done
+  tui_sync
   mapfile -t TUI_PKGS < <(main_dnf_packages)
-  mapfile -t TUI_REMOVE < <(rpm -q --qf '%{NAME}\n' "${REPLACED_PACKAGES[@]}" 2>/dev/null | grep -v ' ' || true)
+  mapfile -t TUI_FLATPAKS < <(chosen_by_source flatpak)
+  mapfile -t TUI_REPOS < <(chosen_by_source repo)
+  mapfile -t TUI_REMOVE < <(rpm -q --qf '%{NAME}\n' "${REPLACED_PACKAGES[@]}" 2>/dev/null | grep -v ' ' |
+    grep -vxF -f <(printf '%s\n' "${TUI_PKGS[@]}") || true)
+}
+
+# tui_default_label ROLE -> the default app's name for ROLE, or "none".
+tui_default_label() {
+  local id=${TUI_DEFAULT[$1]:-}
+  if [[ -n "$id" ]]; then echo "${CAT_LABEL[$id]}"; else echo none; fi
 }
 
 tui_screen_review() {
-  local bw=$(((TUI_CW - 4) / 3)) top=$((TUI_R0 + 2)) bh col
+  local bw=$(((TUI_CW - 4) / 3)) top=$((TUI_R0 + 2)) bh col role repos
   tui_frame_begin
-  tui_topbar "step 4 of 6"
-  tui_wizard_sidebar 3
+  tui_topbar "$(tui_step "$TUI_PAGE")"
+  tui_wizard_sidebar "$TUI_PAGE"
   tui_put "$TUI_R0" "$TUI_C0" 30 "bright,,b" "Ready to install"
   tui_put "$TUI_R0" $((TUI_C0 + TUI_CW - 23)) 23 muted "nothing has changed yet"
   bh=$((TUI_R1 - top - 3))
-  ((bh > 12)) && bh=12
+  ((bh > 13)) && bh=13
   col=$TUI_C0
   tui_box "$top" "$col" "$bw" "$bh" "green,,b" "+ Adds"
   TUI_ROW=$((top + 1)) TUI_COL=$((col + 2)) TUI_TW=$((bw - 4)) TUI_RLIMIT=$((top + bh - 2))
   tui_text fg "${#TUI_PKGS[@]} packages"
   tui_text fg "${#DNF_PLASMA[@]} for Plasma"
-  if [[ -n "${TUI_ON[flatpak]:-}" ]]; then tui_text fg "${#FLATPAKS[@]} Flatpak apps"; fi
+  tui_text fg "${#TUI_FLATPAKS[@]} Flatpak apps"
+  repos="RPM Fusion, Terra, Flathub"
+  for role in "${TUI_REPOS[@]}"; do repos+=", $(tui_repo_label "$role")"; done
   tui_text muted "repos"
-  tui_text fg "RPM Fusion, Terra (limited), Flathub"
-  if [[ -n "${TUI_ON[dev]:-}" ]]; then tui_text fg "Docker, VS Code"; fi
+  tui_text fg "$repos"
   col=$((col + bw + 2))
   tui_box "$top" "$col" "$bw" "$bh" "accent,,b" "~ Sets up"
   TUI_ROW=$((top + 1)) TUI_COL=$((col + 2))
-  tui_text fg "login screen: Umbriel"
+  for role in "${ROLES[@]}"; do tui_text fg "$role: $(tui_default_label "$role")"; done
   if [[ "$PRESET_CHOICE" == off ]]; then tui_text fg "look: plain Ayu"; else tui_text fg "look: $PRESET_CHOICE"; fi
-  tui_text fg "missing configs only"
-  if [[ -n "$TUI_MIGRATE" ]]; then
-    tui_text muted "from fedora-hyprland"
-    tui_text fg "Umbriel config layered, old one kept as a backup"
-  fi
+  tui_text fg "login: Umbriel"
+  if [[ -n "$TUI_MIGRATE" ]]; then tui_text muted "fedora-hyprland moved over"; fi
   col=$((col + bw + 2))
   tui_box "$top" "$col" "$bw" "$bh" "red,,b" "- Removes"
   TUI_ROW=$((top + 1)) TUI_COL=$((col + 2))
@@ -519,8 +627,8 @@ tui_screen_review() {
   else
     tui_text muted "nothing"
   fi
-  TUI_COL="" TUI_TW="" TUI_RLIMIT="" TUI_ROW=$((top + bh + 1))
-  tui_text muted "Safe to stop at any time: run it again and finished steps are skipped."
+  TUI_COL="" TUI_TW="" TUI_RLIMIT="" TUI_ROW=$((top + bh))
+  tui_text muted "Apps you untick stay installed. Safe to stop: run it again and finished steps are skipped."
   tui_buttons "$TUI_R1" "$TUI_BTN" "Install now" "Show every package" "Back"
   tui_footer "your password is asked once" "Tab|next button" "Enter|press" "Backspace|back" "Esc|quit"
 }
@@ -528,8 +636,8 @@ tui_screen_review() {
 tui_screen_pager() {
   local r i rows=$((TUI_R1 - TUI_R0))
   tui_frame_begin
-  tui_topbar "step 4 of 6"
-  tui_wizard_sidebar 3
+  tui_topbar "$(tui_step "$TUI_PAGE")"
+  tui_wizard_sidebar "$TUI_PAGE"
   tui_put "$TUI_R0" "$TUI_C0" "$TUI_CW" "bright,,b" "Every package ($((TUI_OFF + 1))-$((TUI_OFF + rows < ${#TUI_PAGER[@]} ? TUI_OFF + rows : ${#TUI_PAGER[@]})) of ${#TUI_PAGER[@]})"
   r=$((TUI_R0 + 1))
   for ((i = TUI_OFF; i < ${#TUI_PAGER[@]} && r <= TUI_R1; i++)); do
@@ -543,15 +651,17 @@ tui_screen_pager() {
   tui_footer "" "$G_UP$G_DOWN|scroll" "PgUp PgDn|page" "Esc|back"
 }
 
-# tui_pager_lines: the review's package list, grouped.
+# tui_pager_lines: the review's package list, by menu.
 tui_pager_lines() {
-  local p
+  local menu id
   TUI_PAGER=("# Base" "${DNF_DESKTOP[@]}" "${DNF_APPS[@]}" "${DNF_STORAGE[@]}" "${DNF_CLI[@]}" "${DNF_SYSTEM[@]}")
-  for p in $ALL_GROUPS; do
-    if [[ -n "${TUI_ON[$p]:-}" && "$p" != flatpak ]]; then mapfile -t -O "${#TUI_PAGER[@]}" TUI_PAGER < <(echo "# $p"; group_packages "$p"); fi
+  for menu in "${CATEGORIES[@]}"; do
+    TUI_PAGER+=("# ${menu#*|}")
+    for id in $(catalog_ids "${menu%%|*}"); do
+      if [[ -n "${TUI_ON[$id]:-}" ]]; then TUI_PAGER+=("${CAT_LABEL[$id]}: ${CAT_PACKAGES[$id]}"); fi
+    done
   done
   TUI_PAGER+=("# KDE Plasma fallback" "${DNF_PLASMA[@]}")
-  if [[ -n "${TUI_ON[flatpak]:-}" ]]; then TUI_PAGER+=("# Flatpak apps" "${FLATPAKS[@]}"); fi
   if ((${#TUI_REMOVE[@]})); then TUI_PAGER+=("# Removed" "${TUI_REMOVE[@]}"); fi
 }
 
@@ -578,7 +688,7 @@ tui_install_sidebar() {
 tui_screen_install() {
   local i title line r lines=() logh n=0 total=0 rest
   tui_frame_begin
-  tui_topbar "step 5 of 6 $G_DOT $(printf '%02d:%02d' $((SECONDS / 60)) $((SECONDS % 60)))"
+  tui_topbar "$(tui_step $((${#TUI_WIZARD[@]} - 2))) $G_DOT $(printf '%02d:%02d' $((SECONDS / 60)) $((SECONDS % 60)))"
   tui_install_sidebar
   title=${STEPS[TUI_STEP]%%|*}
   # The step's own counter when its output has one (dnf's "[ 98/157]"), else the step count.
@@ -611,10 +721,10 @@ tui_screen_install() {
 tui_screen_done() {
   local ok=$1
   tui_frame_begin
-  tui_topbar "step 6 of 6 $G_DOT $(printf '%02d:%02d' $((SECONDS / 60)) $((SECONDS % 60)))"
+  tui_topbar "$(tui_step $((${#TUI_WIZARD[@]} - 1))) $G_DOT $(printf '%02d:%02d' $((SECONDS / 60)) $((SECONDS % 60)))"
   TUI_ROW=$TUI_R0
   if [[ "$ok" == yes ]]; then
-    tui_wizard_sidebar 5
+    tui_wizard_sidebar $((${#TUI_WIZARD[@]} - 1))
     tui_text "green,,b" "$G_DONE Installed"
     if [[ -n "${TUI_ON[fingerprint]:-}" ]]; then
       tui_text fg "When this window closes, put your finger on the reader to enroll it. Then reboot, and the login screen starts Umbriel."
@@ -651,84 +761,106 @@ tui_draw() {
   tui_flush
 }
 
-# tui_next_opt FROM DIRECTION -> the next selectable software row.
-tui_next_opt() {
-  local i=$1
-  while true; do
-    i=$((i + $2))
-    ((i < 0 || i >= ${#TUI_SW_ROWS[@]})) && { echo "$1"; return; }
-    [[ "${TUI_SW_ROWS[i]}" == opt* ]] && { echo "$i"; return; }
-  done
+# tui_screen_page: the current wizard page.
+tui_screen_page() {
+  case "${TUI_PAGES[TUI_PAGE]}" in
+    welcome) tui_screen_welcome ;;
+    menu:* | extras) tui_screen_list ;;
+    look) tui_screen_look ;;
+    review) tui_screen_review ;;
+  esac
 }
 
-# tui_wizard: the choices, screen by screen. Returns 0 on "Install now", 1 on quit.
+# tui_goto INDEX: opens a wizard page with its cursor reset.
+tui_goto() {
+  local i
+  TUI_PAGE=$1 TUI_SEL=0 TUI_TOP=0 TUI_BTN=0
+  case "${TUI_PAGES[TUI_PAGE]}" in
+    look)
+      tui_load_presets
+      for i in "${!TUI_PRESETS[@]}"; do [[ "${TUI_PRESETS[i]}" == "$PRESET_CHOICE" ]] && TUI_SEL=$i; done
+      ;;
+    review) tui_plan ;;
+  esac
+}
+
+# tui_list_key: a key on a menu or the extras page.
+tui_list_key() {
+  local id role n
+  tui_page_ids
+  n=${#TUI_IDS[@]} id=${TUI_IDS[TUI_SEL]}
+  case "$KEY" in
+    up) TUI_SEL=$((TUI_SEL > 0 ? TUI_SEL - 1 : 0)) ;;
+    down | tab) TUI_SEL=$((TUI_SEL < n - 1 ? TUI_SEL + 1 : TUI_SEL)) ;;
+    home) TUI_SEL=0 ;;
+    end) TUI_SEL=$((n - 1)) ;;
+    space)
+      if [[ -z "${TUI_OFF_WHY[$id]:-}" ]]; then
+        if [[ -n "${TUI_ON[$id]:-}" ]]; then TUI_ON[$id]=""; else TUI_ON[$id]=1; fi
+        tui_sync
+      fi
+      ;;
+    d)
+      role=${CAT_ROLE[$id]:-}
+      if [[ -n "$role" ]]; then TUI_ON[$id]=1 TUI_DEFAULT[$role]=$id; tui_sync; fi
+      ;;
+    enter | right) tui_goto $((TUI_PAGE + 1)) ;;
+    back | left) tui_goto $((TUI_PAGE - 1)) ;;
+  esac
+}
+
+# tui_wizard: the choices, page by page. Returns 0 on "Install now", 1 on quit.
 tui_wizard() {
-  local screen=welcome
-  TUI_BTN=0
+  local pager=""
+  tui_goto 0
   while true; do
-    tui_draw "$screen"
+    if [[ -n "$pager" ]]; then tui_draw pager; else tui_draw page; fi
     tui_read_key 1
     [[ -z "$KEY" ]] && continue
-    if [[ "$KEY" == esc && "$screen" != pager ]] || [[ "$KEY" == q ]]; then return 1; fi
-    case "$screen" in
+    if [[ -n "$pager" ]]; then
+      local page=$((TUI_R1 - TUI_R0)) max=$((${#TUI_PAGER[@]} - (TUI_R1 - TUI_R0)))
+      ((max < 0)) && max=0
+      case "$KEY" in
+        up) TUI_OFF=$((TUI_OFF > 0 ? TUI_OFF - 1 : 0)) ;;
+        down) TUI_OFF=$((TUI_OFF < max ? TUI_OFF + 1 : max)) ;;
+        pgup) TUI_OFF=$((TUI_OFF > page ? TUI_OFF - page : 0)) ;;
+        pgdn | space) TUI_OFF=$((TUI_OFF + page < max ? TUI_OFF + page : max)) ;;
+        home) TUI_OFF=0 ;;
+        end) TUI_OFF=$max ;;
+        esc | back | left | enter | q) pager="" ;;
+      esac
+      continue
+    fi
+    if [[ "$KEY" == esc || "$KEY" == q ]]; then return 1; fi
+    case "${TUI_PAGES[TUI_PAGE]}" in
       welcome)
         case "$KEY" in
           tab | right | left) TUI_BTN=$(((TUI_BTN + 1) % 2)) ;;
-          enter) if ((TUI_BTN == 1)); then return 1; fi; screen=software; TUI_SEL=$(tui_next_opt 0 1) ;;
+          enter) if ((TUI_BTN == 1)); then return 1; fi; tui_goto 1 ;;
         esac
         ;;
-      software)
-        case "$KEY" in
-          up) TUI_SEL=$(tui_next_opt "$TUI_SEL" -1) ;;
-          down | tab) TUI_SEL=$(tui_next_opt "$TUI_SEL" 1) ;;
-          space)
-            local id
-            id=$(cut -d'|' -f2 <<<"${TUI_SW_ROWS[TUI_SEL]}")
-            if [[ -z "${TUI_OFF_WHY[$id]:-}" ]]; then
-              if [[ -n "${TUI_ON[$id]:-}" ]]; then TUI_ON[$id]=""; else TUI_ON[$id]=1; fi
-            fi
-            ;;
-          enter | right) screen=look; TUI_SEL=0; tui_load_presets
-            local i
-            for i in "${!TUI_PRESETS[@]}"; do [[ "${TUI_PRESETS[i]}" == "$PRESET_CHOICE" ]] && TUI_SEL=$i; done
-            ;;
-          back | left) screen=welcome; TUI_BTN=0 ;;
-        esac
-        ;;
+      menu:* | extras) tui_list_key ;;
       look)
         case "$KEY" in
           up) TUI_SEL=$((TUI_SEL > 0 ? TUI_SEL - 1 : 0)) ;;
           down | tab) TUI_SEL=$((TUI_SEL < ${#TUI_PRESETS[@]} - 1 ? TUI_SEL + 1 : TUI_SEL)) ;;
           space) PRESET_CHOICE=${TUI_PRESETS[TUI_SEL]} ;;
-          enter | right) PRESET_CHOICE=${TUI_PRESETS[TUI_SEL]}; tui_plan; screen=review; TUI_BTN=0 ;;
-          back | left) screen=software; TUI_SEL=$(tui_next_opt 0 1) ;;
+          enter | right) PRESET_CHOICE=${TUI_PRESETS[TUI_SEL]}; tui_goto $((TUI_PAGE + 1)) ;;
+          back | left) tui_goto $((TUI_PAGE - 1)) ;;
         esac
         ;;
       review)
         case "$KEY" in
           tab | right) TUI_BTN=$(((TUI_BTN + 1) % 3)) ;;
           left) TUI_BTN=$(((TUI_BTN + 2) % 3)) ;;
-          back) screen=look ;;
+          back) tui_goto $((TUI_PAGE - 1)) ;;
           enter)
             case "$TUI_BTN" in
               0) return 0 ;;
-              1) tui_pager_lines; TUI_OFF=0; screen=pager ;;
-              2) screen=look ;;
+              1) tui_pager_lines; TUI_OFF=0; pager=1 ;;
+              2) tui_goto $((TUI_PAGE - 1)) ;;
             esac
             ;;
-        esac
-        ;;
-      pager)
-        local page=$((TUI_R1 - TUI_R0)) max=$((${#TUI_PAGER[@]} - (TUI_R1 - TUI_R0)))
-        ((max < 0)) && max=0
-        case "$KEY" in
-          up) TUI_OFF=$((TUI_OFF > 0 ? TUI_OFF - 1 : 0)) ;;
-          down) TUI_OFF=$((TUI_OFF < max ? TUI_OFF + 1 : max)) ;;
-          pgup) TUI_OFF=$((TUI_OFF > page ? TUI_OFF - page : 0)) ;;
-          pgdn | space) TUI_OFF=$((TUI_OFF + page < max ? TUI_OFF + page : max)) ;;
-          home) TUI_OFF=0 ;;
-          end) TUI_OFF=$max ;;
-          esc | back | left | enter) screen=review ;;
         esac
         ;;
     esac
@@ -738,9 +870,11 @@ tui_wizard() {
 # tui_answers: the wizard's choices as the variables the install steps read.
 tui_answers() {
   local key
-  export ASSUME=yes DEFER_FINGERPRINT=1 PRESET_CHOICE SOFTWARE_GROUPS
-  for key in home-snapshots grub-btrfs artcraft; do
-    if [[ -n "${TUI_OFF_WHY[$key]:-}" && "${TUI_OFF_WHY[$key]}" == "already on" ]]; then continue; fi
+  tui_sync
+  export ASSUME=yes DEFER_FINGERPRINT=1 APPLY_DEFAULTS=1 PRESET_CHOICE SOFTWARE_ITEMS
+  export DEFAULT_TERMINAL DEFAULT_BROWSER DEFAULT_FILES DEFAULT_EDITOR
+  for key in home-snapshots grub-btrfs; do
+    if [[ "${TUI_OFF_WHY[$key]:-}" == "already on" ]]; then continue; fi
     if [[ -n "${TUI_ON[$key]:-}" ]]; then export "ANSWER_${key//-/_}=yes"; else export "ANSWER_${key//-/_}=no"; fi
   done
   # Without lspci (a fresh Minimal Install) the card is only checked during the install: leave it to setup_nvidia.
@@ -800,6 +934,7 @@ tui_finish() {
 
 tui_main() {
   preflight_checks
+  tui_pages
   tui_colors "$(tui_color_mode "${TERM:-}" "${COLORTERM:-}")"
   tui_glyphs "${TERM:-}"
   tui_detect
@@ -820,3 +955,5 @@ tui_main() {
   tui_start
   if tui_install; then tui_finish yes; else tui_finish no; fi
 }
+
+tui_pages

@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Starts the default app for a job, for the keybinds: browser (Super+W), files (Super+E), editor (Super+T).
+# The defaults are the system's (xdg-mime), so a browser that makes itself the default is followed too.
+set -u
+case "${1:-}" in
+  browser) mime=x-scheme-handler/https ;;
+  files) mime=inode/directory ;;
+  editor) mime=text/plain ;;
+  *) echo "usage: $0 browser|files|editor" >&2; exit 2 ;;
+esac
+desktop=$(xdg-mime query default "$mime" 2>/dev/null)
+if [[ -z "$desktop" ]]; then
+  notify-send "No default $1" "Pick one with: xdg-mime default APP.desktop $mime" 2>/dev/null
+  exit 1
+fi
+IFS=: read -ra dirs <<<"${XDG_DATA_HOME:-$HOME/.local/share}:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+for dir in "${dirs[@]}"; do
+  if [[ -f "$dir/applications/$desktop" ]]; then exec gio launch "$dir/applications/$desktop"; fi
+done
+exec gtk-launch "$desktop"

@@ -5,6 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source lib/common.sh
+source lib/catalog.sh
 source lib/packages.sh
 
 # check NAME TRANSACTION FOREIGN...: fails when TRANSACTION would install one of FOREIGN.

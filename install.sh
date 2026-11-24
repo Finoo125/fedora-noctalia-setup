@@ -49,9 +49,6 @@ optional_steps() {
     ask_once grub-btrfs "Add system snapshots to the boot menu, to start the system as it was before an update?" y; }; then
     setup_grub_btrfs
   fi
-  if [[ ! -f "$ARTCRAFT_APPIMAGE" ]] && ask_once artcraft "Install the ArtCraft Launcher (alpha creative apps)?" n; then
-    install_artcraft
-  fi
 }
 
 # enroll_fingerprint: offers enrollment when a reader is there and nothing is enrolled yet.
@@ -79,14 +76,18 @@ plain_install() {
 }
 
 dry_run() {
-  local group
-  echo "Software groups: ${SOFTWARE_GROUPS-$ALL_GROUPS}"
+  local menu
+  echo "Chosen apps:"
+  for menu in "${CATEGORIES[@]}"; do
+    printf '  %-22s %s\n' "${menu#*|}" "$(for id in $(catalog_ids "${menu%%|*}"); do item_on "$id" && printf '%s, ' "${CAT_LABEL[$id]}"; done | sed 's/, $//')"
+  done
   echo
   echo "dnf packages:"
   main_dnf_packages | sort | column -c "${COLUMNS:-100}"
   echo
   echo "KDE Plasma fallback: ${DNF_PLASMA[*]}"
-  if group_on flatpak; then echo "Flatpak apps: ${FLATPAKS[*]}"; fi
+  echo "Flatpak apps: $(chosen_by_source flatpak | tr '\n' ' ')"
+  echo "Vendor repos: $(chosen_by_source repo | tr '\n' ' ')"
   echo
   echo "Steps: $(printf '%s, ' "${STEPS[@]%%|*}" | sed 's/, $//')"
   echo "Nothing was changed."

@@ -2,18 +2,10 @@
 # Package sources and package lists. Every function here is safe to run again.
 
 # Terra brings only what Fedora and RPM Fusion don't package: the Noctalia parts without a Fedora package (Umbriel
-# and Luciole have no releases upstream yet, so their nightly builds are the only ones), Ghostty and a few apps.
-TERRA_ALLOW="noctalia-greeter*,umbriel-nightly*,xdg-desktop-portal-umbriel-nightly*,luciole-nightly*,ghostty*,signal-desktop*,heroic-games-launcher*,protonplus*,faugus-launcher*,mission-center*"
+# and Luciole have no releases upstream yet, so their nightly builds are the only ones) and the catalog's Terra apps.
+TERRA_BASE=(noctalia-greeter umbriel-nightly xdg-desktop-portal-umbriel-nightly)
 OLD_COPR="lionheartp/Hyprland"
 OLD_COPR_ID="copr:copr.fedorainfracloud.org:lionheartp:Hyprland"
-VSCODE_REPO='[code]
-name=Visual Studio Code
-baseurl=https://packages.microsoft.com/yumrepos/vscode
-enabled=1
-autorefresh=1
-type=rpm-md
-gpgcheck=1
-gpgkey=https://packages.microsoft.com/keys/microsoft.asc'
 
 DNF_BASE=(dnf5-plugins flatpak pciutils jq)
 # The desktop: Umbriel (compositor, Terra nightly), Noctalia (shell, stable from Fedora), the Noctalia login screen.
@@ -26,12 +18,10 @@ DNF_DESKTOP=(umbriel-nightly xdg-desktop-portal-umbriel-nightly xwayland-satelli
   google-noto-sans-fonts google-noto-color-emoji-fonts jetbrains-mono-fonts-all
   google-noto-sans-cjk-fonts liberation-fonts-all wl-clipboard grim slurp gpu-screen-recorder udiskie
   xdg-user-dirs xdg-utils xdg-terminal-exec libnotify playerctl brightnessctl)
-# Luciole (Noctalia's file manager, Terra nightly) is the file manager; it follows Noctalia's colors.
-# KDE apps: they read Noctalia's KDE color scheme (kdeglobals), so they match the desktop in Umbriel and in Plasma.
-# Dolphin stays for the Plasma session and NAS shares (KIO).
-DNF_APPS=(ghostty kitty luciole-nightly dolphin ark okular gwenview kate kcalc kde-partitionmanager plasma-discover plasma-discover-flatpak
-  ffmpegthumbs kdegraphics-thumbnailers firefox mpv mpv-mpris kde-connect
-  pavucontrol thunderbird telegram-desktop discord flatseal signal-desktop mission-center)
+# Apps every install gets; everything else is chosen in the menus (lib/catalog.sh). KDE apps read Noctalia's KDE
+# color scheme (kdeglobals), so they match the desktop in Umbriel and in Plasma.
+DNF_APPS=(ark kcalc kde-partitionmanager plasma-discover plasma-discover-flatpak ffmpegthumbs kdegraphics-thumbnailers
+  kde-connect pavucontrol)
 # Drives, network shares and devices in Dolphin: kio-extras (smb, nfs, sftp, mtp, afc for iPhones), kamera (cameras).
 # kio-fuse gives smb://, mtp:// etc. a real path so non-KDE apps (mpv, ...) can open files there too.
 # gvfs stays for the GTK apps (trash, recent files).
@@ -42,15 +32,9 @@ DNF_CLI=(git gh wget2-wget curl fastfetch btop bat eza fzf ripgrep fd-find zoxid
 DNF_MEDIA=(intel-media-driver libva-utils)
 # AMD only: Fedora's mesa leaves out H.264/HEVC hardware decoding, RPM Fusion's build has it.
 DNF_AMD=(mesa-va-drivers-freeworld)
-# Optional groups (ALL_GROUPS in lib/common.sh): chosen in the TUI, all on for a plain run.
-DNF_GAMING=(steam gamemode mangohud gamescope lutris protontricks winetricks vulkan-tools
-  heroic-games-launcher protonplus faugus-launcher)
-DNF_PRINTING=(cups cups-pk-helper cups-pdf hplip gutenprint-cups foomatic-db system-config-printer)
 DNF_SYSTEM=(fuse-libs avahi nss-mdns
   NetworkManager-openvpn-gnome NetworkManager-openconnect-gnome wireguard-tools fprintd fprintd-pam
   snapper btrfs-assistant btrfsmaintenance smartmontools libdnf5-plugin-actions fwupd thermald intel-lpmd inotify-tools)
-DNF_DEV=(gcc make uv python3 python3.12 python3.13 nodejs24 nodejs24-npm podman distrobox code
-  docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin)
 DNF_NVIDIA=(akmod-nvidia xorg-x11-drv-nvidia-cuda xorg-x11-drv-nvidia-libs.i686 xorg-x11-drv-nvidia-power
   libva-nvidia-driver switcheroo-control)
 DNF_SECUREBOOT=(kmodtool akmods mokutil openssl)
@@ -59,42 +43,36 @@ DNF_SECUREBOOT=(kmodtool akmods mokutil openssl)
 # kde-gtk-config (which rewrites the GTK settings).
 DNF_PLASMA=(plasma-workspace plasma-desktop kwin plasma-systemsettings kscreen plasma-nm plasma-pa powerdevil bluedevil
   polkit-kde xdg-desktop-portal-kde)
-# Replaced by the KDE apps above; removed once when an older install is migrated (see remove_replaced_apps).
+# Replaced by the KDE apps; removed once when an older install is migrated (see remove_replaced_apps), unless
+# chosen in a menu (Thunar, VLC, Papers and GNOME Text Editor are choices now).
 # Also the Hyprland stack of a fedora-hyprland install (it came from the lionheartp COPR, which is removed).
 REPLACED_PACKAGES=(hyprland hyprland-guiutils hyprland-uwsm uwsm xdg-desktop-portal-hyprland hyprpicker hyprqt6engine nwg-look
   luciole-git Thunar thunar-archive-plugin thunar-volman tumbler ffmpegthumbnailer file-roller qview papers
   gnome-text-editor gnome-calculator gnome-software gnome-software-fedora-langpacks gnome-disk-utility gparted xfce-polkit
   vlc qt6ct gvfs-fuse gvfs-smb gvfs-nfs gvfs-mtp gvfs-afc gvfs-gphoto2 gvfs-archive)
-# Only apps without an RPM in Fedora, RPM Fusion or Terra; everything else comes from dnf.
-FLATPAKS=(com.rtosta.zapzap com.bitwarden.desktop md.obsidian.Obsidian io.dbeaver.DBeaverCommunity
-  org.localsend.localsend_app it.mijorus.gearlever org.gnome.World.PikaBackup)
 # adw-gtk3 for GTK3 Flatpaks (DBeaver); without it they fall back to light Adwaita. Noctalia switches between the two.
 FLATPAK_THEMES=(org.gtk.Gtk3theme.adw-gtk3 org.gtk.Gtk3theme.adw-gtk3-dark)
 
 # all_dnf_packages -> every dnf package the installer may install, one per line (CI checks they exist).
 all_dnf_packages() {
   printf '%s\n' "${DNF_BASE[@]}" "${DNF_DESKTOP[@]}" "${DNF_APPS[@]}" "${DNF_STORAGE[@]}" "${DNF_CLI[@]}" "${DNF_MEDIA[@]}" \
-    "${DNF_GAMING[@]}" "${DNF_PRINTING[@]}" "${DNF_SYSTEM[@]}" "${DNF_DEV[@]}" "${DNF_NVIDIA[@]}" "${DNF_SECUREBOOT[@]}" "${DNF_AMD[@]}" \
-    "${DNF_PLASMA[@]}" ffmpeg
+    "${DNF_SYSTEM[@]}" "${DNF_NVIDIA[@]}" "${DNF_SECUREBOOT[@]}" "${DNF_AMD[@]}" "${DNF_PLASMA[@]}" ffmpeg
+  all_by_source rpm
 }
 
-# group_packages GROUP -> the dnf packages of an optional group, one per line (flatpak has none).
-group_packages() {
-  case "$1" in
-    gaming) printf '%s\n' "${DNF_GAMING[@]}" ;;
-    dev) printf '%s\n' "${DNF_DEV[@]}" ;;
-    printing) printf '%s\n' "${DNF_PRINTING[@]}" ;;
-  esac
+# terra_allow -> Terra's includepkgs: the Noctalia parts and every catalog app from Terra (chosen or not, so a later
+# choice works without touching the repo again).
+terra_allow() {
+  local -a pkgs=("${TERRA_BASE[@]}")
+  mapfile -t -O "${#pkgs[@]}" pkgs < <(all_by_source terra)
+  printf '%s*,' "${pkgs[@]}" | sed 's/,$//'
 }
 
-# main_dnf_packages -> the packages install_packages installs in one dnf transaction, one per line: the base
-# plus the chosen groups.
+# main_dnf_packages -> the packages install_packages installs in one dnf transaction, one per line: the base plus
+# the chosen apps.
 main_dnf_packages() {
-  local group
   printf '%s\n' "${DNF_DESKTOP[@]}" "${DNF_APPS[@]}" "${DNF_STORAGE[@]}" "${DNF_CLI[@]}" "${DNF_SYSTEM[@]}"
-  for group in $ALL_GROUPS; do
-    if group_on "$group"; then group_packages "$group"; fi
-  done
+  chosen_by_source rpm
 }
 
 # Other desktops' shells, sessions and login managers. A dependency that drags one in (as GParted once did
@@ -140,17 +118,12 @@ setup_repos() {
     sudo dnf install -y --nogpgcheck --repofrompath 'terra,https://repos.fyralabs.com/terra$releasever' terra-release
   fi
   # Only TERRA_ALLOW comes from Terra; nothing else from it may replace a Fedora package (noctalia stays Fedora's).
-  sudo dnf config-manager setopt "terra.includepkgs=$TERRA_ALLOW"
+  sudo dnf config-manager setopt "terra.includepkgs=$(terra_allow)"
   for repo in $(dnf repo list --all | terra_extra_repos); do
     sudo dnf config-manager setopt "$repo.enabled=0"
   done
-  if group_on dev; then
-    if [[ ! -f /etc/yum.repos.d/docker-ce.repo ]]; then
-      sudo dnf config-manager addrepo --from-repofile=https://download.docker.com/linux/fedora/docker-ce.repo
-    fi
-    sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc
-    write_root /etc/yum.repos.d/vscode.repo "$VSCODE_REPO"
-  fi
+  # Vendor repos (Docker, VS Code, Brave, ...) only for the apps chosen from them.
+  for repo in $(chosen_by_source repo); do setup_vendor_repo "$repo"; done
   sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 }
 
@@ -181,7 +154,9 @@ remove_replaced_apps() {
   local -a installed=()
   [[ -f "$marker" ]] && return 0
   # `|| true`: none installed is fine, and the process substitution would otherwise fire install.sh's ERR trap.
-  mapfile -t installed < <(rpm -q --qf '%{NAME}\n' "${REPLACED_PACKAGES[@]}" 2>/dev/null | grep -v ' ' || true)
+  # Apps chosen in a menu stay, even when an older install treated them as replaced.
+  mapfile -t installed < <(rpm -q --qf '%{NAME}\n' "${REPLACED_PACKAGES[@]}" 2>/dev/null | grep -v ' ' |
+    grep -vxF -f <(main_dnf_packages) || true)
   if ((${#installed[@]})); then
     transaction=$(LC_ALL=C sudo dnf remove --assumeno --noautoremove "${installed[@]}" 2>&1 || true)
     extra=$(removal_names <<<"$transaction" | grep -vxF -f <(printf '%s\n' "${installed[@]}") || true)
@@ -196,11 +171,9 @@ remove_replaced_apps() {
 }
 
 install_flatpaks() {
-  if group_on flatpak; then
-    sudo flatpak install -y --noninteractive flathub "${FLATPAKS[@]}" "${FLATPAK_THEMES[@]}"
-  else
-    sudo flatpak install -y --noninteractive flathub "${FLATPAK_THEMES[@]}"
-  fi
+  local -a apps
+  mapfile -t apps < <(chosen_by_source flatpak)
+  sudo flatpak install -y --noninteractive flathub "${apps[@]}" "${FLATPAK_THEMES[@]}"
   # Cursors (and icons) installed for your user live in ~/.local/share/icons, which Flatpaks can't see otherwise.
   # Noctalia's colors: GTK apps read them from gtk-3.0/gtk-4.0, Qt apps from kdeglobals through the KDE runtime's
   # platform theme, like the desktop itself (without it Qt Flatpaks get Qt's plain look).

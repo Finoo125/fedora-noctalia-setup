@@ -2,7 +2,7 @@
 # Per-user configuration: config layering, Umbriel config, wallpapers, GTK/Qt/KDE settings.
 
 WALL_DIR="$HOME/Pictures/Wallpapers"
-UMBRIEL_SCRIPTS=(desks.sh dock.sh)
+UMBRIEL_SCRIPTS=(desks.sh dock.sh open-default.sh)
 
 # umbriel_stub REPO [CURSOR] -> ~/.config/umbriel/config.toml (written once, then it's yours). Umbriel applies the
 # included defaults first and this file last, so whatever is set here wins.
@@ -110,6 +110,33 @@ apply_preset() {
   ln -sfn "$file" "$active"
 }
 
+# app_desktop ID -> the desktop file name of a catalog app: a Flatpak's id, else the shortest .desktop file its first
+# package installs (kitty ships kitty.desktop and kitty-open.desktop).
+app_desktop() {
+  local pkg=${CAT_PACKAGES[$1]%% *}
+  if [[ "${CAT_SOURCE[$1]}" == flatpak ]]; then echo "$pkg.desktop"; return 0; fi
+  rpm -ql "$pkg" 2>/dev/null | grep -E '^/usr/share/applications/[^/]+\.desktop$' | xargs -r -n1 basename |
+    awk '{ print length, $0 }' | sort -n | head -1 | cut -d' ' -f2-
+}
+
+# apply_default_apps: the defaults chosen in the TUI become the system's: the terminal for xdg-terminal-exec
+# (Super+Return), the browser, the file manager for folders and the editor for text files (Super+W, E, T).
+apply_default_apps() {
+  local role id desktop
+  for role in terminal browser files editor; do
+    id=$(default_for "$role")
+    [[ -n "$id" ]] || continue
+    desktop=$(app_desktop "$id")
+    if [[ -z "$desktop" ]]; then warn "No app entry found for ${CAT_LABEL[$id]}, so it isn't the default $role."; continue; fi
+    case "$role" in
+      terminal) printf '%s\n' "$desktop" >"$HOME/.config/xdg-terminals.list" ;;
+      browser) xdg-settings set default-web-browser "$desktop" || warn "Could not make ${CAT_LABEL[$id]} the default browser." ;;
+      files) xdg-mime default "$desktop" inode/directory ;;
+      editor) xdg-mime default "$desktop" text/plain ;;
+    esac
+  done
+}
+
 wallpaper_urls() { grep -vE '^[[:space:]]*(#|$)' "$1"; }
 default_wallpaper() { echo "$2/$(basename "$(wallpaper_urls "$1" | head -1)")"; }
 
@@ -183,6 +210,7 @@ setup_user() {
   ln -sfn "$REPO_DIR/bin/update" "$HOME/.local/bin/update"
   ln -sfn "$REPO_DIR/bin/noctalia-preset" "$HOME/.local/bin/noctalia-preset"
   if [[ -n "${PRESET_CHOICE:-}" ]]; then apply_preset "$PRESET_CHOICE"; fi
+  if [[ -n "${APPLY_DEFAULTS:-}" ]]; then apply_default_apps; fi
 }
 
 # migrate_from_fedora_hyprland CONFIG_DIR: once, moves a fedora-hyprland machine over. Only what fedora-hyprland (or

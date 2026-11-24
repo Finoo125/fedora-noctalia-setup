@@ -27,15 +27,18 @@ write_once "$tmp/gen/file" "generated"
 assert_eq "generated" "$(cat "$tmp/gen/file")" "write_once creates missing files"
 
 STATE_DIR="$tmp/state"; CHOICES_FILE="$STATE_DIR/choices"
-SOFTWARE_GROUPS="gaming dev"; save_choices
-unset SOFTWARE_GROUPS; load_choices
-assert_eq "gaming dev" "${SOFTWARE_GROUPS:-}" "saved groups load again"
-SOFTWARE_GROUPS="printing"; load_choices
-assert_eq "printing" "$SOFTWARE_GROUPS" "a group choice from the environment wins"
-SOFTWARE_GROUPS=""; save_choices; unset SOFTWARE_GROUPS; load_choices
-assert_false "no groups stays no groups" group_on gaming
-rm -f "$CHOICES_FILE"; unset SOFTWARE_GROUPS
-assert_true "without a choice every group is on" group_on flatpak
+source lib/catalog.sh
+SOFTWARE_ITEMS="firefox zen" DEFAULT_BROWSER=zen; save_choices
+unset SOFTWARE_ITEMS DEFAULT_BROWSER; load_choices
+assert_eq "firefox zen" "${SOFTWARE_ITEMS:-}" "saved apps load again"
+assert_eq "zen" "${DEFAULT_BROWSER:-}" "the default browser loads again"
+SOFTWARE_ITEMS="kitty"; load_choices
+assert_eq "kitty" "$SOFTWARE_ITEMS" "a choice from the environment wins"
+SOFTWARE_ITEMS=""; save_choices; unset SOFTWARE_ITEMS; load_choices
+assert_false "no apps stays no apps" item_on firefox
+rm -f "$CHOICES_FILE"; unset SOFTWARE_ITEMS DEFAULT_BROWSER
+assert_true "without a choice the catalog defaults apply" item_on firefox
+assert_false "and apps that aren't defaults stay off" item_on brave
 
 ANSWER_home_snapshots=yes
 assert_true "an answer from the TUI is a yes" ask_once home-snapshots "Q?" n

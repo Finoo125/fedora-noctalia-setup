@@ -6,28 +6,36 @@ LOG_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/fedora-noctalia-setup/install.log"
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/fedora-noctalia-setup"
 
 CHOICES_FILE="$STATE_DIR/choices"
-# Optional software groups (lib/packages.sh); every group is on until the TUI saves a choice.
-ALL_GROUPS="gaming dev printing flatpak"
 
-# load_choices: SOFTWARE_GROUPS and PRESET_CHOICE from the choices file, unless already set (tests, env).
+# load_choices: the apps chosen in the menus (SOFTWARE_ITEMS) and the default apps (DEFAULT_<ROLE>), unless already
+# set (tests, env). Without a choices file every app's catalog default applies.
 load_choices() {
   local key value
   [[ -f "$CHOICES_FILE" ]] || return 0
   while IFS='=' read -r key value; do
     case "$key" in
-      groups) [[ -n "${SOFTWARE_GROUPS+set}" ]] || SOFTWARE_GROUPS="$value" ;;
+      items) [[ -n "${SOFTWARE_ITEMS+set}" ]] || SOFTWARE_ITEMS="$value" ;;
+      default-terminal | default-browser | default-files | default-editor)
+        key="DEFAULT_${key#default-}"
+        key=${key^^}
+        [[ -n "${!key:-}" ]] || printf -v "$key" '%s' "$value"
+        ;;
     esac
   done <"$CHOICES_FILE"
 }
 
-# save_choices: what the TUI chose, so `update` installs the same groups again.
+# save_choices: what the TUI chose, so `update` installs the same apps again.
 save_choices() {
+  local role var
   mkdir -p "$STATE_DIR"
-  printf 'groups=%s\n' "${SOFTWARE_GROUPS-$ALL_GROUPS}" >"$CHOICES_FILE"
+  {
+    printf 'items=%s\n' "${SOFTWARE_ITEMS-$(default_items | tr '\n' ' ')}"
+    for role in terminal browser files editor; do
+      var="DEFAULT_${role^^}"
+      if [[ -n "${!var:-}" ]]; then printf 'default-%s=%s\n' "$role" "${!var}"; fi
+    done
+  } >"$CHOICES_FILE"
 }
-
-# group_on NAME -> 0 when software group NAME is chosen.
-group_on() { [[ " ${SOFTWARE_GROUPS-$ALL_GROUPS} " == *" $1 "* ]]; }
 
 OLD_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/fedora-hyprland"
 

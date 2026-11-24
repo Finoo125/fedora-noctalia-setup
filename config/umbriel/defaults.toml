@@ -29,7 +29,8 @@ QT_QPA_PLATFORMTHEME = "kde"
 # KDE apps find the app menu (Dolphin's "Open with") in Plasma's menu file, outside Plasma too.
 XDG_MENU_PREFIX = "plasma-"
 ELECTRON_OZONE_PLATFORM_HINT = "auto"
-TERMINAL = "ghostty"
+# The default terminal (xdg-terminals.list, set by the installer).
+TERMINAL = "xdg-terminal-exec"
 
 # ==============================================================================
 # Laptop panel. Docked monitors go in monitors.toml (scripts/dock.sh writes the HP ones).
@@ -123,14 +124,14 @@ size = 32
 "Mod+O" = { action = "overview-toggle", repeat = false }
 "Mod+Shift+Escape" = { action = "shortcuts-inhibit-toggle", allow_when_inhibited = true, repeat = false }
 
-# Apps
-"Mod+Return" = { action = "spawn ghostty +new-window", repeat = false }
-"Mod+E" = { action = "spawn luciole", repeat = false }
-"Mod+W" = { action = "spawn firefox", repeat = false }
-"Mod+T" = { action = "spawn kate --new", repeat = false }
+# Apps: the default terminal, browser, file manager and editor chosen in the installer (or later with xdg-mime).
+"Mod+Return" = { action = "spawn xdg-terminal-exec", repeat = false }
+"Mod+E" = { action = "spawn ~/.config/umbriel/scripts/open-default.sh files", repeat = false }
+"Mod+W" = { action = "spawn ~/.config/umbriel/scripts/open-default.sh browser", repeat = false }
+"Mod+T" = { action = "spawn ~/.config/umbriel/scripts/open-default.sh editor", repeat = false }
 "Mod+C" = { action = "spawn kcalc", repeat = false }
 "XF86Calculator" = { action = "spawn kcalc", repeat = false }
-"Ctrl+Shift+Escape" = { action = "spawn ghostty +new-window -e btop", repeat = false }
+"Ctrl+Shift+Escape" = { action = "spawn xdg-terminal-exec btop", repeat = false }
 
 # Noctalia
 "Mod+Space" = { action = "spawn noctalia msg panel-toggle launcher", repeat = false }
