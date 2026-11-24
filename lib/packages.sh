@@ -2,8 +2,9 @@
 # Package sources and package lists. Every function here is safe to run again.
 
 # Terra brings only what Fedora and RPM Fusion don't package: the Noctalia parts without a Fedora package (Umbriel
-# and Luciole have no releases upstream yet, so their nightly builds are the only ones) and the catalog's Terra apps.
-TERRA_BASE=(noctalia-greeter umbriel-nightly xdg-desktop-portal-umbriel-nightly)
+# and Luciole have no releases upstream yet, so their nightly builds are the only ones), gpu-screen-recorder (Noctalia's
+# screen recorder plugin) and the catalog's Terra apps.
+TERRA_BASE=(noctalia-greeter umbriel-nightly xdg-desktop-portal-umbriel-nightly gpu-screen-recorder)
 OLD_COPR="lionheartp/Hyprland"
 OLD_COPR_ID="copr:copr.fedorainfracloud.org:lionheartp:Hyprland"
 

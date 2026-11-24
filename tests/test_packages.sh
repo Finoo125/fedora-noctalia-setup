@@ -33,7 +33,8 @@ assert_true  "btrfs gets scrubbed"             grep -qx btrfsmaintenance <<<"$al
 
 allow=$(terra_allow)
 for pkg in noctalia-greeter umbriel-nightly xdg-desktop-portal-umbriel-nightly luciole-nightly ghostty \
-  signal-desktop heroic-games-launcher protonplus faugus-launcher mission-center helium-browser-bin zen-browser; do
+  signal-desktop heroic-games-launcher protonplus faugus-launcher mission-center helium-browser-bin zen-browser \
+  gpu-screen-recorder; do
   assert_true "Terra allows $pkg" grep -q "\b$pkg\*" <<<"$allow"
 done
 assert_false "noctalia is Fedora's stable build, never Terra's" grep -q '\bnoctalia\*' <<<"$allow"
