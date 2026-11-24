@@ -88,12 +88,11 @@ assert_true "new installs open folders in Luciole" grep -qx 'inode/directory=dev
 # Scripts are links into the repo; one you changed yourself stays.
 cfg="$tmp/cfg"; mkdir -p "$cfg/umbriel/scripts"
 cp config/umbriel/scripts/desks.sh "$cfg/umbriel/scripts/desks.sh"
-echo 'my own' >"$cfg/umbriel/scripts/dock.sh"
+echo 'my own' >"$cfg/umbriel/scripts/old.sh"
 link_umbriel_scripts "$PWD" "$cfg" 2>/dev/null
 assert_eq "$PWD/config/umbriel/scripts/desks.sh" "$(readlink "$cfg/umbriel/scripts/desks.sh")" "an unchanged copy becomes a link"
 assert_true "the default-app launcher is a command now" test -x bin/open-default
-assert_eq "my own" "$(cat "$cfg/umbriel/scripts/dock.sh")" "a changed script stays"
-assert_false "a changed script is not replaced by a link" test -L "$cfg/umbriel/scripts/dock.sh"
+assert_eq "my own" "$(cat "$cfg/umbriel/scripts/old.sh")" "a script of your own stays"
 
 # A fedora-hyprland machine with the Umbriel trial moves over once.
 old="$tmp/old/.config"; REPO_DIR=/repo; STATE_DIR="$tmp/state-migrate"

@@ -27,6 +27,7 @@ that COPR is added when you tick Hyprland, and removed again (with fedora-hyprla
 - Qt and KDE apps in Noctalia's colors (`QT_QPA_PLATFORMTHEME=kde`), the Classic Pointer cursor, natural scrolling,
   and the system keyboard layout.
 - X11 apps through xwayland-satellite (niri, MangoWC, Umbriel) or Hyprland's own XWayland.
+- Your [monitor layout](monitors.md), with the laptop screen off while docked if you chose that.
 
 ## Your config and the defaults
 
@@ -35,8 +36,7 @@ colors) and has a "Your own changes go below this line" marker: what you add the
 defaults update with `update`. Delete the file and run `install.sh` to get a fresh one.
 
 - **Umbriel:** tables merge key by key; a list you set (like `general.autostart`) replaces the default list.
-  `~/.config/umbriel/scripts/` links to `desks.sh` (linked desks across monitors) and `dock.sh` (laptop panel off
-  while docked; writes `monitors.toml` for the HP dock monitors the first time).
+  `~/.config/umbriel/scripts/` links to `desks.sh` (linked desks across monitors).
 - **Hyprland:** Lua (Hyprland 0.55 and newer). The defaults are modules in `config/hypr`; your `hyprland.lua`
   requires them. It runs through uwsm, whose environment is `~/.config/uwsm/env`. A fedora-hyprland stub found there
   is replaced once, the old one kept as `hyprland.lua.fedora-hyprland`.

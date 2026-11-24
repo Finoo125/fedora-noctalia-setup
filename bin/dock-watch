@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# Started with the session by Umbriel, niri and MangoWC. While an external monitor is connected (docked), it turns the
+# laptop panel off when you chose "off when docked" in `monitors`, and also while the lid is closed; undocked, the
+# panel is always on. It reacts to monitors being plugged in (udev) and checks the lid every few seconds.
+# Hyprland does the same in ~/.config/hypr/monitors.lua. On a desktop (no laptop panel) it exits at once.
+# Installed as /usr/local/bin/dock-watch.
+set -u
+CONF="${XDG_CONFIG_HOME:-$HOME/.config}/fedora-noctalia-setup/monitors.conf"
+DRM=${DOCK_WATCH_DRM:-/sys/class/drm}
+
+panel() {
+  local d n
+  for d in "$DRM"/card*-eDP-* "$DRM"/card*-LVDS-* "$DRM"/card*-DSI-*; do
+    [[ -e "$d" ]] || continue
+    n=${d##*/}
+    echo "${n#card*-}"
+    return
+  done
+}
+
+docked() {
+  local d n
+  for d in "$DRM"/card*-*; do
+    n=${d##*/}
+    n=${n#card*-}
+    case "$n" in eDP* | LVDS* | DSI* | Writeback*) continue ;; esac
+    [[ "$(cat "$d/status" 2>/dev/null)" == connected ]] && return 0
+  done
+  return 1
+}
+
+lid_closed() { grep -qs closed /proc/acpi/button/lid/*/state; }
+policy() { sed -n 's/^laptop-docked=//p' "$CONF" 2>/dev/null | tail -1; }
+
+# wanted -> on or off for the panel right now.
+wanted() {
+  if docked && { [[ "$(policy)" == off ]] || lid_closed; }; then echo off; else echo on; fi
+}
+
+# set_panel NAME on|off, with the running compositor's own command.
+set_panel() {
+  if [[ -n "${UMBRIEL_SOCKET:-}" ]]; then
+    if [[ "$2" == on ]]; then umbriel msg output-enable "$1"; else umbriel msg output-disable "$1"; fi
+  elif [[ -n "${NIRI_SOCKET:-}" ]]; then
+    niri msg output "$1" "$2"
+  else
+    wlr-randr --output "$1" "--$2"
+  fi
+}
+
+[[ -z "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] || exit 0
+PANEL=$(panel)
+[[ -n "$PANEL" ]] || exit 0
+[[ "${1:-}" == --once ]] && { wanted; exit 0; }
+last=""
+apply() {
+  local want
+  want=$(wanted)
+  if [[ "$want" != "$last" ]] && set_panel "$PANEL" "$want" >/dev/null 2>&1; then last=$want; fi
+}
+apply
+while true; do
+  # A udev event (a monitor plugged in or out) or five seconds (the lid); without udev, every five seconds.
+  if ! read -r -t 5 _; then (($? > 128)) || sleep 5; fi
+  apply
+done < <(udevadm monitor --udev --subsystem-match=drm 2>/dev/null)

@@ -2,7 +2,7 @@
 # Per-user configuration: config layering, Umbriel config, wallpapers, GTK/Qt/KDE settings.
 
 WALL_DIR="$HOME/Pictures/Wallpapers"
-UMBRIEL_SCRIPTS=(desks.sh dock.sh)
+UMBRIEL_SCRIPTS=(desks.sh)
 
 # umbriel_stub REPO [CURSOR] -> ~/.config/umbriel/config.toml (written once, then it's yours). Umbriel applies the
 # included defaults first and this file last, so whatever is set here wins.
@@ -272,6 +272,11 @@ setup_user() {
   done
   setup_compositors "$HOME/.config"
   write_keybinds "$HOME/.config"
+  # The layout chosen on the installer's Monitors page; then each compositor's monitor file.
+  if [[ -n "${SAVE_MONITORS:-}" ]]; then mon_save; fi
+  write_monitors "$HOME/.config"
+  # dock.sh became dock-watch: a link to the old script would point nowhere.
+  if [[ -L "$HOME/.config/umbriel/scripts/dock.sh" && ! -e "$HOME/.config/umbriel/scripts/dock.sh" ]]; then rm -f "$HOME/.config/umbriel/scripts/dock.sh"; fi
   # Noctalia's btop template only switches the theme in an existing btop.conf; btop fills in the rest itself.
   write_once "$HOME/.config/btop/btop.conf" 'color_theme = "noctalia"'
   download_wallpapers "$list" "$WALL_DIR"
@@ -293,6 +298,7 @@ setup_user() {
   ln -sfn "$REPO_DIR/bin/update" "$HOME/.local/bin/update"
   ln -sfn "$REPO_DIR/bin/noctalia-preset" "$HOME/.local/bin/noctalia-preset"
   ln -sfn "$REPO_DIR/bin/keybinds" "$HOME/.local/bin/keybinds"
+  ln -sfn "$REPO_DIR/bin/monitors" "$HOME/.local/bin/monitors"
   # A look that no longer exists (renamed or removed in an update) would leave a broken link in Noctalia's config.
   if [[ -L "$HOME/.config/noctalia/30-preset.toml" && ! -e "$HOME/.config/noctalia/30-preset.toml" ]]; then
     rm -f "$HOME/.config/noctalia/30-preset.toml"

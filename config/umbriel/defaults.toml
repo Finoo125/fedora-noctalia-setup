@@ -3,10 +3,9 @@
 # Reloads on save; check with `umbriel config validate`. Reference: https://docs.noctalia.dev/umbriel/
 #
 # Next to your config.toml:
-#   monitors.toml    docked monitors, written by scripts/dock.sh the first time the HP monitors are plugged in
-#                    (Umbriel matches monitors by make+model+serial, so the serials are filled in then)
+#   monitors.toml    your monitor layout, written by `monitors` (Umbriel matches monitors by make+model+serial)
 #   noctalia.toml    border and overview colors from Noctalia's umbriel template
-#   scripts/         links to this repo's desks.sh (five linked desks) and dock.sh (laptop panel off when docked)
+#   scripts/         a link to this repo's desks.sh (five linked desks)
 
 # The standard keybindings (written from config/keybinds.tsv and your changes; see `keybinds`).
 [include.optional]
@@ -20,7 +19,7 @@ files = ["~/.config/umbriel/keybinds.toml"]
 autostart = [
   "noctalia",
   "udiskie --no-notify --no-tray",
-  "~/.config/umbriel/scripts/dock.sh",
+  "dock-watch",
 ]
 # X11 apps (Steam, some games) draw at full resolution on a scaled panel (xwayland.force_zero_scaling).
 xwayland_native_resolution = true
@@ -37,7 +36,7 @@ ELECTRON_OZONE_PLATFORM_HINT = "auto"
 TERMINAL = "xdg-terminal-exec"
 
 # ==============================================================================
-# Laptop panel. Docked monitors go in monitors.toml (scripts/dock.sh writes the HP ones).
+# Laptop panel. Your monitor layout from `monitors` is in monitors.toml.
 
 [output.eDP-1]
 scale = 1

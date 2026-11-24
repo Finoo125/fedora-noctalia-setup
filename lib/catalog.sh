@@ -19,7 +19,7 @@ CATALOG=(
   "desktop|umbriel|Umbriel|1|session|terra|umbriel-nightly xdg-desktop-portal-umbriel-nightly xwayland-satellite|Noctalia's own compositor: effects, overview, linked desks. Nightly build from Terra."
   "desktop|hyprland|Hyprland|0|session|copr:lionheartp/Hyprland|hyprland hyprland-uwsm uwsm xdg-desktop-portal-hyprland hyprland-guiutils hyprpicker|Dynamic tiling with animations and blur. From the lionheartp COPR, which Hyprland recommends for Fedora."
   "desktop|niri|niri|0|session|dnf|niri xdg-desktop-portal-gnome xwayland-satellite|Scrollable tiling: windows in columns on an endless strip. Fedora's own package."
-  "desktop|mango|MangoWC|0|session|terra|mangowm xdg-desktop-portal-wlr xwayland-satellite|Light dwl-based compositor with tags, scroller layout and blur. From Terra."
+  "desktop|mango|MangoWC|0|session|terra|mangowm xdg-desktop-portal-wlr xwayland-satellite wlr-randr|Light dwl-based compositor with tags, scroller layout and blur. From Terra."
 
   "fallback|plasma|KDE Plasma|1||noweak|plasma-workspace plasma-desktop kwin plasma-systemsettings kscreen plasma-nm plasma-pa powerdevil bluedevil polkit-kde xdg-desktop-portal-kde|Minimal Plasma session on the login screen, for when the compositor or a game misbehaves. Same colors and passwords."
   "fallback|gnome|GNOME|0||noweak|gnome-shell gnome-session-wayland-session gnome-control-center xdg-desktop-portal-gnome|Minimal GNOME session on the login screen: the shell and its settings, no extra apps. GDM's library comes along; GDM stays off."

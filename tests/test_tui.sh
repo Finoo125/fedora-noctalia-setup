@@ -41,7 +41,7 @@ tui_pages
 tui_defaults
 assert_true  "default apps start ticked"           test -n "${TUI_ON[firefox]}"
 assert_false "other apps start unticked"           test -n "${TUI_ON[brave]}"
-assert_eq "22" "${#TUI_WIZARD[@]}" "welcome, 14 menus, drivers, extras, look, keybindings, review, install, done"
+assert_eq "23" "${#TUI_WIZARD[@]}" "welcome, 14 menus, drivers, extras, monitors, look, keybindings, review, install, done"
 # shellcheck disable=SC2153 # set by tui_pages
 assert_eq "menu:desktop" "${TUI_PAGES[1]}" "the compositors come first"
 assert_eq "umbriel" "${TUI_DEFAULT[session]}" "Umbriel starts as the login session"
@@ -85,7 +85,7 @@ assert_eq "15" "$TUI_PAGE" "keys on an empty drivers page don't fail"
 hw_scan "8086 46a8 0300" "04f3 0c7e ff," "HP" ""
 
 TUI_ON[steam]="" TUI_ON[docker]=""
-TUI_PAGE=19; tui_plan
+TUI_PAGE=20; tui_plan
 # shellcheck disable=SC2153 # set by tui_plan
 assert_false "no Steam once it is unticked"         grep -qx steam < <(printf '%s\n' "${TUI_PKGS[@]}")
 assert_false "no Docker repo once Docker is unticked" grep -qx docker < <(printf '%s\n' "${TUI_REPOS[@]}")
@@ -115,7 +115,7 @@ assert_eq "2" "$TUI_DONE_STEPS" "done and skipped steps count as finished"
 
 # The keybindings page: change one, refuse a taken key, reset.
 kb_load
-TUI_PAGE=18; TUI_SEL=0; TUI_TOP=0; TUI_KB_EDIT=""; tui_screen_keys
+TUI_PAGE=19; TUI_SEL=0; TUI_TOP=0; TUI_KB_EDIT=""; tui_screen_keys
 assert_true "the keybindings page lists Close window" grep -q "Close window" <<<"$(plain)"
 KEY=enter KEY_CHAR=""; tui_keys_key
 for c in s u p e r + y; do KEY=other KEY_CHAR=$c; tui_keys_key; done
@@ -129,4 +129,22 @@ assert_true "and the page says which one" grep -q "Browser" <<<"$TUI_KB_MSG"
 KEY=other KEY_CHAR=r; tui_keys_key
 assert_eq "Super+Q" "${KB_KEY[close]}" "R restores the default"
 assert_true "every action goes to the install steps" grep -q "^close=Super+Q;" <<<"$(tui_keybind_overrides)"
+
+# The monitors page: a docked laptop, rotate, move, the laptop's docked behaviour.
+source tests/edid.sh
+drm="$tmp/drm"
+fake_monitor "$drm" eDP-1 1920x1200 CSO 1506 "" "" 30
+fake_monitor "$drm" DP-5 2560x1440 HPN 3A47 "HP E27q G5" CNK2210ABC 60
+mon_scan "$drm"; mon_defaults
+TUI_PAGE=17; TUI_SEL=0; tui_screen_monitors
+assert_true "the monitors page lists the HP monitor" grep -q "HP E27q G5" <<<"$(plain)"
+KEY=other KEY_CHAR=r; tui_monitors_key
+assert_eq "90" "${MON_ROT[DP-5]}" "R turns the highlighted monitor"
+KEY=right KEY_CHAR=""; tui_monitors_key
+assert_eq "eDP-1 DP-5" "${MON_ORDER[*]}" "the arrows move it along the row"
+KEY=other KEY_CHAR=l; tui_monitors_key
+assert_eq "off" "$MON_LAPTOP_DOCKED" "L switches the laptop screen while docked"
+TUI_SEL=0; KEY=space KEY_CHAR=" "; tui_monitors_key; TUI_SEL=1; KEY=space KEY_CHAR=" "; tui_monitors_key
+assert_true "the last screen that is on stays on" test -n "${MON_ON[DP-5]}"
+assert_true "a change is saved at install" test -n "$TUI_MON_CHANGED"
 finish

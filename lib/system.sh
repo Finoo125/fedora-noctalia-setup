@@ -212,6 +212,7 @@ setup_system() {
   sudo rm -f "${OLD_SYSTEM_FILES[@]}"
   # The keybinds of every compositor start the default apps with it.
   sudo install -m 755 "$REPO_DIR/bin/open-default" /usr/local/bin/open-default
+  sudo install -m 755 "$REPO_DIR/bin/dock-watch" /usr/local/bin/dock-watch
   setup_greeter
   setup_fingerprint
   setup_snapper

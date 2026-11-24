@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# Your monitor layout: position, rotation, scale, on/off, and what the laptop screen does while docked.
+#   monitors          the Monitors page of the installer, for the monitors connected now (plug in the dock first)
+#   monitors --list   the monitors found and their layout, as text
+# Saved in ~/.config/fedora-noctalia-setup/monitors.conf and applied at once to every installed compositor.
+set -euo pipefail
+# shellcheck source=lib/common.sh
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../lib/common.sh"
+for lib in catalog locale monitors tui; do
+  # shellcheck source=/dev/null
+  source "$REPO_DIR/lib/$lib.sh"
+done
+load_choices
+mon_scan
+mon_load
+
+list() {
+  local c
+  mon_layout
+  if ((${#MON_IDS[@]} == 0)); then echo "No connected monitor reported its details."; return; fi
+  for c in "${MON_ORDER[@]}"; do
+    if [[ -n "${MON_ON[$c]}" ]]; then
+      printf '%-8s %-46s %sx%s at %s,%s, turned %s°, scale %s%s\n' "$c" "${MON_NAME[$c]}" "${MON_W[$c]}" "${MON_H[$c]}" \
+        "${MON_X[$c]}" "${MON_Y[$c]}" "${MON_ROT[$c]}" "${MON_SCALE[$c]}" "$([[ -n "${MON_BELOW[$c]}" ]] && echo ", below the row")"
+    else
+      printf '%-8s %-46s off\n' "$c" "${MON_NAME[$c]}"
+    fi
+  done
+  if [[ -n "$(mon_internal)" ]]; then echo "Laptop screen while docked: $MON_LAPTOP_DOCKED"; fi
+}
+
+case "${1:-}" in
+  --list) list; exit 0 ;;
+  -h | --help) sed -n '2,5s/^# \?//p' "$0"; exit 0 ;;
+  "") ;;
+  *) die "Unknown option $1. See monitors --help." ;;
+esac
+[[ -t 0 && -t 1 ]] || { list; exit 0; }
+
+tui_colors "$(tui_color_mode "${TERM:-}" "${COLORTERM:-}")"
+tui_glyphs "${TERM:-}"
+TUI_SYSTEM=$(. /etc/os-release && echo "${NAME:-Linux} ${VERSION_ID:-}")
+TUI_PAGES=(monitors) TUI_WIZARD=(Monitors) TUI_PAGE=0 TUI_SEL=0 TUI_MON_ENTER=save
+tui_start
+while true; do
+  tui_draw page
+  tui_read_key 1
+  [[ -z "$KEY$KEY_CHAR" ]] && continue
+  case "$KEY" in
+    esc | q) tui_stop; echo "Nothing was changed."; exit 0 ;;
+    enter) break ;;
+  esac
+  tui_monitors_key
+done
+tui_stop
+mon_save
+write_monitors "${XDG_CONFIG_HOME:-$HOME/.config}"
+# niri, MangoWC and Umbriel reload their config by themselves; Hyprland is told.
+if pgrep -x Hyprland >/dev/null 2>&1; then hyprctl reload >/dev/null || true; fi
+list

@@ -31,13 +31,8 @@ battery to last. On Intel CPUs thermald and the low-power-mode daemon run too.
 
 ## Monitors and docking
 
-On Umbriel, `~/.config/umbriel/scripts/dock.sh` turns the laptop panel off while an external monitor is connected and
-back on when the last one is unplugged. It also writes `~/.config/umbriel/monitors.toml` for two HP dock monitors the
-first time they appear (HP E27q G5 portrait on the left, HP X27i on the right). For other monitors, run
-`umbriel outputs` and add `[output."<make model serial>"]` sections to that file. One wallpaper spans both monitors.
-
-On Hyprland the same layout is in `config/hypr/monitors.lua`; on niri and MangoWC set outputs in your own config
-(`niri msg outputs`, `wlr-randr`).
+Arrange your monitors, turn them and choose whether the laptop screen stays on while docked with `monitors` (plug in
+the dock first). See [Monitors](monitors.md).
 
 ## Your own changes
 
@@ -45,9 +40,10 @@ On Hyprland the same layout is in `config/hypr/monitors.lua`; on niri and MangoW
 |---|---|
 | Your compositor config (`~/.config/umbriel/config.toml`, `hypr/hyprland.lua`, `niri/config.kdl`, `mango/config.conf`): put overrides at the bottom | The generated keybindings (`~/.config/*/keybinds.*`): change keys with `keybinds` instead |
 | `~/.config/ghostty/config`, `kitty/kitty.conf`, `btop/btop.conf`, `gtk-3.0`/`gtk-4.0` settings, `uwsm/env` | `~/.config/noctalia/10-fedora-noctalia-local.toml` (wallpaper folder and default) |
-| `~/.config/mimeapps.list`, `~/.config/xdg-desktop-portal/*-portals.conf`, `~/.config/umbriel/monitors.toml` | `~/.config/environment.d/60-fedora-noctalia-setup-gpu.conf` (NVIDIA only) |
+| `~/.config/mimeapps.list`, `~/.config/xdg-desktop-portal/*-portals.conf` | `~/.config/environment.d/60-fedora-noctalia-setup-gpu.conf` (NVIDIA only) |
 | The KDE look (`kdeglobals`, `kcminputrc`, `kwalletrc`), set once | `/etc/greetd/config.toml`, `/var/lib/noctalia-greeter/greeter.toml` |
-| `~/.config/fedora-noctalia-setup/keybinds.conf`, any other `~/.config/noctalia/*.toml`, `~/.config/noctalia-presets`, everything you change in Noctalia's Settings | `/usr/local/bin/open-default` |
+| `~/.config/fedora-noctalia-setup/monitors.conf` (your monitor layout) | The generated monitor files (`~/.config/*/monitors.*`): change them with `monitors` |
+| `~/.config/fedora-noctalia-setup/keybinds.conf`, any other `~/.config/noctalia/*.toml`, `~/.config/noctalia-presets`, everything you change in Noctalia's Settings | `/usr/local/bin/open-default`, `/usr/local/bin/dock-watch` |
 
 The defaults themselves live in this repo (`config/`) and arrive with `update`. To get a fresh copy of a file of
 yours, delete it and run `install.sh`.

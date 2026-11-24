@@ -55,6 +55,8 @@ layout {
 spawn-at-startup "noctalia"
 // Mounts USB drives as they are plugged in; Noctalia's udiskie plugin shows the notifications.
 spawn-at-startup "udiskie" "--no-notify" "--no-tray"
+// Laptop panel off while docked, if you chose that in `monitors`.
+spawn-at-startup "dock-watch"
 
 window-rule {
     geometry-corner-radius 14
@@ -87,3 +89,6 @@ binds {
 }
 
 include optional=true "~/.config/niri/keybinds.kdl"
+
+// Your monitor layout (written by `monitors`).
+include optional=true "~/.config/niri/monitors.kdl"

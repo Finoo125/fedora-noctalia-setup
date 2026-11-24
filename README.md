@@ -37,6 +37,8 @@ Run it as your normal user. Nothing changes before you press **Install now** on 
   bar, apps, terminals and borders. → [Looks](docs/looks.md)
 - **Your keybindings:** change any of them in the installer or with `keybinds set ACTION KEYS`.
   → [Keybindings](docs/keybindings.md)
+- **Your monitors:** detected at install, arranged with a preview (position, rotation, scale), docked or not, with the
+  laptop screen as one more monitor or off while docked. → [Monitors](docs/monitors.md)
 - **Safety nets:** btrfs snapshots before and after every update, optionally snapshots in the boot menu and hourly
   snapshots of `/home`, Pika Backup for real backups. → [Everyday use](docs/everyday.md)
 
@@ -47,6 +49,7 @@ Run it as your normal user. Nothing changes before you press **Install now** on 
 | `update` | Packages, Flatpaks, firmware, drivers and this repo's defaults, in one go |
 | `noctalia-preset [NAME\|off]` | List or switch looks |
 | `keybinds [set ACTION KEYS\|reset]` | List or change keybindings |
+| `monitors` | Arrange monitors (plug in the dock first) |
 | `install.sh --scan` | List the hardware that needs extra drivers |
 
 ## Documentation
@@ -57,6 +60,7 @@ Run it as your normal user. Nothing changes before you press **Install now** on 
 - [Drivers](docs/drivers.md): the hardware scan, NVIDIA and Secure Boot
 - [Looks](docs/looks.md)
 - [Keybindings](docs/keybindings.md): the defaults and how to change them
+- [Monitors](docs/monitors.md): layout, rotation, laptops and docks
 - [Everyday use](docs/everyday.md): update, snapshots and backups, power, monitors, your own changes, moving from
   fedora-hyprland
 - [If something breaks](docs/troubleshooting.md)

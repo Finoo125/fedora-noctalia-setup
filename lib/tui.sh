@@ -1,4 +1,5 @@
 # shellcheck shell=bash
+# shellcheck disable=SC2004,SC2153 # MON_* and KB_* are associative arrays from lib/monitors.sh and lib/keybinds.sh
 # The full-screen installer: the steps on the left, the current step on the right, the keys at the bottom.
 # Plain bash and escape codes, so it runs on a fresh Minimal Install, in a terminal emulator and on the Linux console.
 # Screens draw into TUI_BUF and tui_flush prints it in one go, so tests can render a screen at a fixed size.
@@ -313,8 +314,8 @@ tui_pages() {
     TUI_PAGES+=("menu:${menu%%|*}")
     TUI_WIZARD+=("${menu#*|}")
   done
-  TUI_PAGES+=(drivers extras look keybinds review)
-  TUI_WIZARD+=(Drivers Extras Look Keybindings Review Install Done)
+  TUI_PAGES+=(drivers extras monitors look keybinds review)
+  TUI_WIZARD+=(Drivers Extras Monitors Look Keybindings Review Install Done)
 }
 
 # tui_step INDEX -> "step N of M" for the top bar.
@@ -819,6 +820,139 @@ tui_screen_done() {
   tui_footer "${LOG_FILE/#$HOME/\~}" "Tab|next button" "Enter|press"
 }
 
+# tui_monitor_preview TOP HEIGHT: the layout, scaled into the content area; the highlighted monitor in the accent color.
+tui_monitor_preview() {
+  local top=$1 height=$2 c i w h maxx=1 maxy=1 x0 y0 x1 y1 bw r style label width=$((TUI_CW - 2))
+  mon_layout
+  for c in "${MON_ORDER[@]}"; do
+    [[ -n "${MON_ON[$c]}" ]] || continue
+    read -r w h < <(mon_size "$c")
+    ((MON_X[$c] + w > maxx)) && maxx=$((MON_X[$c] + w))
+    ((MON_Y[$c] + h > maxy)) && maxy=$((MON_Y[$c] + h))
+  done
+  # Terminal cells are about twice as tall as wide: a row covers twice the pixels of a column.
+  local sx=$((maxx * 1000 / width)) sy=$((maxy * 500 / height))
+  ((sy > sx)) && sx=$sy
+  ((sx < 1)) && sx=1
+  for i in "${!MON_ORDER[@]}"; do
+    c=${MON_ORDER[i]}
+    [[ -n "${MON_ON[$c]}" ]] || continue
+    read -r w h < <(mon_size "$c")
+    x0=$((MON_X[$c] * 1000 / sx)) x1=$(((MON_X[$c] + w) * 1000 / sx - 1))
+    y0=$((MON_Y[$c] * 500 / sx)) y1=$(((MON_Y[$c] + h) * 500 / sx - 1))
+    ((y1 - y0 < 2)) && y1=$((y0 + 2))
+    ((x1 - x0 < 6)) && x1=$((x0 + 6))
+    bw=$((x1 - x0 + 1))
+    if ((i == TUI_SEL)); then style="accent,,b"; else style="muted"; fi
+    tui_put $((top + y0)) $((TUI_C0 + x0)) "$bw" "$style" "$G_TL$(tui_repeat "$G_H" $((bw - 2)))$G_TR"
+    for ((r = top + y0 + 1; r < top + y1; r++)); do
+      tui_put "$r" $((TUI_C0 + x0)) 1 "$style" "$G_V"
+      tui_put "$r" $((TUI_C0 + x1)) 1 "$style" "$G_V"
+    done
+    tui_put $((top + y1)) $((TUI_C0 + x0)) "$bw" "$style" "$G_BL$(tui_repeat "$G_H" $((bw - 2)))$G_BR"
+    label="$((i + 1))"
+    ((bw > 12)) && label="$((i + 1)) ${MON_MODEL[$c]}"
+    tui_put $((top + (y0 + y1) / 2)) $((TUI_C0 + x0 + 2)) $((bw - 4)) "$style" "$label"
+  done
+}
+
+# tui_screen_monitors: the detected monitors, a preview of their arrangement and each one's settings.
+tui_screen_monitors() {
+  local i c r line style kind
+  tui_frame_begin
+  tui_topbar "$(tui_step "$TUI_PAGE")"
+  tui_wizard_sidebar "$TUI_PAGE"
+  if ((${#MON_IDS[@]} == 0)); then
+    TUI_ROW=$TUI_R0
+    tui_text "bright,,b" "No monitor found"
+    tui_text fg "No connected monitor reported its details (common in virtual machines). The compositors arrange screens on their own; run monitors later to set a layout."
+    tui_footer "" "Enter|next" "Backspace|back" "Esc|quit"
+    return 0
+  fi
+  tui_put "$TUI_R0" "$TUI_C0" "$TUI_CW" muted "Monitors found now. Docked later? Plug in the dock and run: monitors"
+  # The preview gets the rows the list and the two setting lines leave.
+  local ph=$((TUI_R1 - TUI_R0 - ${#MON_ORDER[@]} - 6))
+  ((ph > 14)) && ph=14
+  ((ph < 4)) && ph=4
+  tui_monitor_preview $((TUI_R0 + 2)) "$ph"
+  r=$((TUI_R0 + ph + 3))
+  for i in "${!MON_ORDER[@]}"; do
+    c=${MON_ORDER[i]}
+    if [[ -n "${MON_INTERNAL[$c]}" ]]; then kind="laptop"; else kind="$c"; fi
+    if [[ -n "${MON_ON[$c]}" ]]; then
+      line=$(printf '%d %-24s %-10s %4sx%-4s %3s° x%-4s %s' $((i + 1)) "${MON_MODEL[$c]:0:24}" "$kind" "${MON_W[$c]}" "${MON_H[$c]}" "${MON_ROT[$c]}" "${MON_SCALE[$c]}" "$([[ -n "${MON_BELOW[$c]}" ]] && echo below)")
+    else
+      line=$(printf '%d %-24s %-10s off' $((i + 1)) "${MON_MODEL[$c]:0:24}" "$kind")
+    fi
+    if ((i == TUI_SEL)); then style="page,accent,b"; else style="fg"; fi
+    tui_put "$r" "$TUI_C0" "$TUI_CW" "$style" "$line"
+    r=$((r + 1))
+  done
+  r=$((r + 1))
+  tui_put "$r" "$TUI_C0" "$TUI_CW" muted "Row aligned: $MON_ALIGN (A)"
+  if [[ -n "$(mon_internal)" ]]; then
+    if [[ "$MON_LAPTOP_DOCKED" == off ]]; then line="off while docked (L)"; else line="on while docked, as one more screen (L)"; fi
+    tui_put $((r + 1)) "$TUI_C0" "$TUI_CW" muted "Laptop screen: $line"
+  fi
+  tui_footer "" "$G_UP$G_DOWN|pick" "$G_PTR|move" "R|rotate" "S|scale" "B|below" "Space|on/off" "Enter|${TUI_MON_ENTER:-next}"
+}
+
+# tui_monitors_key: a key on the monitors page. Left/right move the highlighted monitor in the row (the page itself is
+# left with Backspace and Enter).
+tui_monitors_key() {
+  local n=${#MON_ORDER[@]} c j t
+  if ((n == 0)); then
+    case "$KEY" in enter | right) tui_goto $((TUI_PAGE + 1)) ;; back | left) tui_goto $((TUI_PAGE - 1)) ;; esac
+    return 0
+  fi
+  c=${MON_ORDER[TUI_SEL]}
+  case "$KEY_CHAR" in
+    r | R)
+      for j in "${!MON_ROTATIONS[@]}"; do [[ "${MON_ROTATIONS[j]}" == "${MON_ROT[$c]}" ]] && t=$j; done
+      MON_ROT[$c]=${MON_ROTATIONS[$(((${t:-0} + 1) % ${#MON_ROTATIONS[@]}))]} TUI_MON_CHANGED=1
+      return 0
+      ;;
+    s | S)
+      t=0
+      for j in "${!MON_SCALES[@]}"; do [[ "${MON_SCALES[j]}" == "${MON_SCALE[$c]}" ]] && t=$((j + 1)); done
+      MON_SCALE[$c]=${MON_SCALES[$((t % ${#MON_SCALES[@]}))]} TUI_MON_CHANGED=1
+      return 0
+      ;;
+    b | B) if [[ -n "${MON_BELOW[$c]}" ]]; then MON_BELOW[$c]=""; else MON_BELOW[$c]=1; fi; TUI_MON_CHANGED=1; return 0 ;;
+    a | A)
+      case "$MON_ALIGN" in top) MON_ALIGN=center ;; center) MON_ALIGN=bottom ;; *) MON_ALIGN=top ;; esac
+      TUI_MON_CHANGED=1
+      return 0
+      ;;
+    l | L)
+      if [[ -n "$(mon_internal)" ]]; then
+        if [[ "$MON_LAPTOP_DOCKED" == off ]]; then MON_LAPTOP_DOCKED=on; else MON_LAPTOP_DOCKED=off; fi
+        TUI_MON_CHANGED=1
+      fi
+      return 0
+      ;;
+  esac
+  case "$KEY" in
+    up) TUI_SEL=$((TUI_SEL > 0 ? TUI_SEL - 1 : 0)) ;;
+    down | tab) TUI_SEL=$((TUI_SEL < n - 1 ? TUI_SEL + 1 : TUI_SEL)) ;;
+    left | right)
+      if [[ "$KEY" == left ]]; then j=$((TUI_SEL - 1)); else j=$((TUI_SEL + 1)); fi
+      if ((j >= 0 && j < n)); then
+        t=${MON_ORDER[j]} MON_ORDER[j]=$c MON_ORDER[TUI_SEL]=$t TUI_SEL=$j TUI_MON_CHANGED=1
+      fi
+      ;;
+    space)
+      # The last screen that is on stays on.
+      local on=0 o
+      for o in "${MON_ORDER[@]}"; do [[ -n "${MON_ON[$o]}" ]] && on=$((on + 1)); done
+      if [[ -n "${MON_ON[$c]}" ]]; then ((on > 1)) && MON_ON[$c]=""; else MON_ON[$c]=1; fi
+      TUI_MON_CHANGED=1
+      ;;
+    enter) tui_goto $((TUI_PAGE + 1)) ;;
+    back) tui_goto $((TUI_PAGE - 1)) ;;
+  esac
+}
+
 # tui_screen_keys: the keybindings, the same in every compositor. Enter changes one, R restores its default.
 tui_screen_keys() {
   local i id r style top=$((TUI_R0 + 2)) bottom=$((TUI_R1 - 2)) rows mark
@@ -925,6 +1059,7 @@ tui_screen_page() {
     menu:* | drivers | extras) tui_screen_list ;;
     look) tui_screen_look ;;
     keybinds) tui_screen_keys ;;
+    monitors) tui_screen_monitors ;;
     review) tui_screen_review ;;
   esac
 }
@@ -1018,6 +1153,11 @@ tui_wizard() {
       tui_keys_key
       continue
     fi
+    # The monitors page uses letters (R, S, B, A, L) and the arrows itself.
+    if [[ "${TUI_PAGES[TUI_PAGE]}" == monitors && "$KEY" != esc && "$KEY" != q ]]; then
+      tui_monitors_key
+      continue
+    fi
     if [[ "$KEY" == esc || "$KEY" == q ]]; then return 1; fi
     case "${TUI_PAGES[TUI_PAGE]}" in
       welcome)
@@ -1028,6 +1168,7 @@ tui_wizard() {
         ;;
       menu:* | drivers | extras) tui_list_key ;;
       keybinds) tui_keys_key ;;
+      monitors) tui_monitors_key ;;
       look)
         case "$KEY" in
           up) TUI_SEL=$((TUI_SEL > 0 ? TUI_SEL - 1 : 0)) ;;
@@ -1063,6 +1204,8 @@ tui_answers() {
   export DEFAULT_TERMINAL DEFAULT_BROWSER DEFAULT_FILES DEFAULT_EDITOR DEFAULT_SESSION DRIVER_ITEMS
   KEYBIND_OVERRIDES=$(tui_keybind_overrides)
   export KEYBIND_OVERRIDES
+  # The monitor layout is saved only when you changed something, so an earlier layout made while docked stays.
+  if [[ -n "${TUI_MON_CHANGED:-}" ]]; then export SAVE_MONITORS=1; fi
   for key in home-snapshots grub-btrfs; do
     if [[ "${TUI_OFF_WHY[$key]:-}" == "already on" ]]; then continue; fi
     if [[ -n "${TUI_ON[$key]:-}" ]]; then export "ANSWER_${key//-/_}=yes"; else export "ANSWER_${key//-/_}=no"; fi
@@ -1124,6 +1267,8 @@ tui_main() {
   preflight_checks
   tui_pages
   kb_load
+  mon_scan
+  mon_load
   tui_colors "$(tui_color_mode "${TERM:-}" "${COLORTERM:-}")"
   tui_glyphs "${TERM:-}"
   tui_detect

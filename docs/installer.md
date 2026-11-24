@@ -33,6 +33,7 @@ the bottom. Nothing changes on your system before you press **Install now** on t
 | Terminal ... Utilities | Twelve software menus with the popular apps for each job. **D** marks the default terminal, browser, file manager and editor. See [Software](software.md). |
 | Drivers | What the hardware scan found and recommends. See [Drivers](drivers.md). |
 | Extras | Fingerprint login (when a reader was found), hourly snapshots of `/home`, snapshots in the boot menu. |
+| Monitors | Position, rotation, scale and on/off of each connected monitor, and the laptop screen while docked. See [Monitors](monitors.md). |
 | Look | One of the 13 looks. See [Looks](looks.md). |
 | Keybindings | Every keybinding; change any of them. See [Keybindings](keybindings.md). |
 | Review | What will be added, set up and removed. **Show every package** lists them all. |
