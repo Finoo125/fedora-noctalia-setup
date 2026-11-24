@@ -3,6 +3,8 @@ set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 source tests/lib.sh
 source lib/common.sh
+source lib/catalog.sh
+source lib/locale.sh
 source lib/user.sh
 
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
@@ -66,7 +68,14 @@ assert_false "no Hyprland tools in the Umbriel defaults" grep -qi 'hypr' "$defau
 assert_false "keybinds name no app directly" grep -qE 'spawn (ghostty|firefox|luciole|kate)' "$defaults"
 assert_true "Super+Return opens the default terminal" grep -qF '"Mod+Return" = { action = "spawn xdg-terminal-exec"' "$defaults"
 assert_true "Noctalia colors Umbriel" grep -qF '"umbriel"' config/noctalia/00-fedora-noctalia.toml
-assert_false "no Hyprland template any more" grep -qF '"hyprland"' config/noctalia/00-fedora-noctalia.toml
+for t in hyprland niri mango umbriel; do assert_true "Noctalia colors $t" grep -qF "\"$t\"" config/noctalia/00-fedora-noctalia.toml; done
+for f in config/niri/defaults.kdl config/mango/defaults.conf config/hypr/binds.lua; do
+  assert_true "$f opens the default terminal" grep -q 'xdg-terminal-exec' "$f"
+  assert_true "$f opens the default browser" grep -q 'open-default.*browser' "$f"
+  assert_true "$f starts nothing by its name" bash -c "! grep -qE '(spawn|exec_cmd|run)[ (\"]*(ghostty|firefox|luciole|kate)' $f"
+done
+assert_true "niri starts Noctalia" grep -qx 'spawn-at-startup "noctalia"' config/niri/defaults.kdl
+assert_true "MangoWC starts Noctalia" grep -qx 'exec_once=noctalia' config/mango/defaults.conf
 assert_true "Noctalia writes the KDE color scheme" grep -qF '"kcolorscheme"' config/noctalia/00-fedora-noctalia.toml
 assert_false "the plain qt template no longer competes with it" grep -qF '"qt"' config/noctalia/00-fedora-noctalia.toml
 
@@ -83,7 +92,7 @@ cp config/umbriel/scripts/desks.sh "$cfg/umbriel/scripts/desks.sh"
 echo 'my own' >"$cfg/umbriel/scripts/dock.sh"
 link_umbriel_scripts "$PWD" "$cfg" 2>/dev/null
 assert_eq "$PWD/config/umbriel/scripts/desks.sh" "$(readlink "$cfg/umbriel/scripts/desks.sh")" "an unchanged copy becomes a link"
-assert_eq "$PWD/config/umbriel/scripts/open-default.sh" "$(readlink "$cfg/umbriel/scripts/open-default.sh")" "the default-app launcher is linked"
+assert_true "the default-app launcher is a command now" test -x bin/open-default
 assert_eq "my own" "$(cat "$cfg/umbriel/scripts/dock.sh")" "a changed script stays"
 assert_false "a changed script is not replaced by a link" test -L "$cfg/umbriel/scripts/dock.sh"
 
@@ -123,6 +132,24 @@ mkdir -p "$HOME/Pictures/Wallpapers"; : >"$HOME/Pictures/Wallpapers/wallhaven-e8
 assert_eq "$PWD/config/noctalia/presets/aurora.toml" "$(readlink "$HOME/.config/noctalia/30-preset.toml")" "the chosen look is linked"
 ( pgrep() { return 1; }; apply_preset off )
 assert_false "off removes the look" test -e "$HOME/.config/noctalia/30-preset.toml"
+
+# Compositor configs: written once, for the chosen compositors only; fedora-hyprland's Hyprland stub is replaced.
+comp="$tmp/comp"; mkdir -p "$comp/hypr"; XKB_CONF="$tmp/kb.conf"
+printf 'Section "InputClass"\n  Option "XkbLayout" "de"\n  Option "XkbVariant" "nodeadkeys"\nEndSection\n' >"$XKB_CONF"
+printf 'require("/home/u/.local/share/fedora-hyprland/config/hypr/main.lua")("x")\n-- mine\n' >"$comp/hypr/hyprland.lua"
+SOFTWARE_ITEMS="hyprland niri" setup_compositors "$comp" 2>/dev/null
+assert_true  "niri gets its config"                 grep -qF "include \"$REPO_DIR/config/niri/defaults.kdl\"" "$comp/niri/config.kdl"
+assert_true  "with the system keyboard layout"      grep -q 'layout "de"' "$comp/niri/config.kdl"
+assert_true  "and its portal settings"              test -f "$comp/xdg-desktop-portal/niri-portals.conf"
+assert_false "MangoWC isn't chosen, so no config"   test -e "$comp/mango/config.conf"
+assert_false "nor Umbriel's"                        test -e "$comp/umbriel/config.toml"
+assert_true  "Hyprland loads this repo's defaults"  grep -qF "$REPO_DIR/config/hypr/main.lua" "$comp/hypr/hyprland.lua"
+assert_true  "the old Hyprland stub is kept"        grep -qx -- '-- mine' "$comp/hypr/hyprland.lua.fedora-hyprland"
+assert_true  "Hyprland gets the uwsm environment"   grep -qx 'export QT_QPA_PLATFORMTHEME=kde' "$comp/uwsm/env"
+SOFTWARE_ITEMS="mango" setup_compositors "$comp" 2>/dev/null
+assert_true  "MangoWC sources the defaults"         grep -qx "source=$REPO_DIR/config/mango/defaults.conf" "$comp/mango/config.conf"
+assert_true  "with the system keyboard layout"      grep -qx 'xkb_rules_variant=nodeadkeys' "$comp/mango/config.conf"
+assert_false "no empty variant line, which MangoWC rejects" grep -qx 'xkb_rules_variant=' <<<"$(mango_stub /r /h us "")"
 
 # State: answers and applied-once settings carry over from fedora-hyprland, once.
 OLD_STATE_DIR="$tmp/st-old"; STATE_DIR="$tmp/st-new"; mkdir -p "$OLD_STATE_DIR"; : >"$OLD_STATE_DIR/declined-artcraft"

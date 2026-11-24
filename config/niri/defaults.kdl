@@ -1,0 +1,149 @@
+// fedora-noctalia-setup defaults for niri. Included by ~/.config/niri/config.kdl, which comes after this file, so what
+// you set there wins (binds override by key, most sections merge). Check with `niri validate`.
+// Reference: https://github.com/YaLTeR/niri/wiki/Configuration:-Introduction
+
+input {
+    keyboard {
+        numlock
+    }
+    touchpad {
+        tap
+        natural-scroll
+    }
+    mouse {
+        natural-scroll
+    }
+    focus-follows-mouse max-scroll-amount="0%"
+}
+
+cursor {
+    xcursor-theme "Classic-pointer"
+    xcursor-size 32
+}
+
+environment {
+    // Qt and KDE apps read Noctalia's colors, Breeze, Papirus and the fonts from kdeglobals (plasma-integration).
+    QT_QPA_PLATFORMTHEME "kde"
+    // KDE apps find the app menu (Dolphin's "Open with") in Plasma's menu file, outside Plasma too.
+    XDG_MENU_PREFIX "plasma-"
+    ELECTRON_OZONE_PLATFORM_HINT "auto"
+    TERMINAL "xdg-terminal-exec"
+}
+
+prefer-no-csd
+
+hotkey-overlay {
+    skip-at-startup
+}
+
+layout {
+    gaps 10
+    center-focused-column "never"
+    default-column-width { proportion 0.5; }
+    preset-column-widths {
+        proportion 0.33333
+        proportion 0.5
+        proportion 0.66667
+    }
+    // The ring's colors come from Noctalia's niri template (noctalia.kdl).
+    focus-ring {
+        width 2
+    }
+}
+
+// Noctalia: the shell (bar, launcher, notifications, lock screen). X11 apps start xwayland-satellite on their own.
+spawn-at-startup "noctalia"
+// Mounts USB drives as they are plugged in; Noctalia's udiskie plugin shows the notifications.
+spawn-at-startup "udiskie" "--no-notify" "--no-tray"
+
+window-rule {
+    geometry-corner-radius 14
+    clip-to-geometry true
+}
+
+window-rule {
+    match app-id="dev.noctalia.Noctalia"
+    open-floating true
+    default-column-width { fixed 1080; }
+    default-window-height { fixed 920; }
+}
+
+window-rule {
+    match app-id="^(org.kde.kcalc|nm-connection-editor|system-config-printer)$"
+    open-floating true
+}
+
+// Noctalia's panels animate themselves; its wallpaper sits in the overview's backdrop.
+layer-rule {
+    match namespace="^noctalia-wallpaper"
+    place-within-backdrop true
+}
+
+binds {
+    // Windows
+    Mod+Q repeat=false { close-window; }
+    Mod+F repeat=false { fullscreen-window; }
+    Mod+D repeat=false { maximize-column; }
+    Mod+Alt+Space repeat=false { toggle-window-floating; }
+    Mod+Left { focus-column-left; }
+    Mod+Right { focus-column-right; }
+    Mod+Up { focus-window-up; }
+    Mod+Down { focus-window-down; }
+    Mod+Shift+Left { move-column-left; }
+    Mod+Shift+Right { move-column-right; }
+    Mod+Shift+Up { move-window-up; }
+    Mod+Shift+Down { move-window-down; }
+    Mod+R { switch-preset-column-width; }
+    Mod+O repeat=false { toggle-overview; }
+    Mod+Shift+Escape allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
+
+    // Desks: Super+N shows desk N, Super+Shift+N moves the window there.
+    Mod+1 { focus-workspace 1; }
+    Mod+2 { focus-workspace 2; }
+    Mod+3 { focus-workspace 3; }
+    Mod+4 { focus-workspace 4; }
+    Mod+5 { focus-workspace 5; }
+    Mod+Shift+1 { move-column-to-workspace 1; }
+    Mod+Shift+2 { move-column-to-workspace 2; }
+    Mod+Shift+3 { move-column-to-workspace 3; }
+    Mod+Shift+4 { move-column-to-workspace 4; }
+    Mod+Shift+5 { move-column-to-workspace 5; }
+    Ctrl+Mod+Left { focus-workspace-up; }
+    Ctrl+Mod+Right { focus-workspace-down; }
+
+    // Apps: the defaults chosen in the installer (or later with xdg-mime).
+    Mod+Return repeat=false { spawn "xdg-terminal-exec"; }
+    Mod+E repeat=false { spawn "open-default" "files"; }
+    Mod+W repeat=false { spawn "open-default" "browser"; }
+    Mod+T repeat=false { spawn "open-default" "editor"; }
+    Mod+C repeat=false { spawn "kcalc"; }
+    XF86Calculator repeat=false { spawn "kcalc"; }
+    Ctrl+Shift+Escape repeat=false { spawn "xdg-terminal-exec" "btop"; }
+
+    // Noctalia
+    Mod+Space repeat=false { spawn-sh "noctalia msg panel-toggle launcher"; }
+    Mod+Period repeat=false { spawn-sh "noctalia msg panel-toggle launcher /emo"; }
+    Mod+X repeat=false { spawn-sh "noctalia msg panel-toggle control-center"; }
+    Mod+Z repeat=false { spawn-sh "noctalia msg settings-toggle"; }
+    Mod+A repeat=false { spawn-sh "noctalia msg panel-toggle control-center notifications"; }
+    Mod+V repeat=false { spawn-sh "noctalia msg panel-toggle clipboard"; }
+    Mod+L repeat=false { spawn-sh "noctalia msg session lock"; }
+    Mod+Alt+C repeat=false { spawn-sh "noctalia msg panel-toggle session"; }
+    Mod+Shift+W repeat=false { spawn-sh "noctalia msg panel-toggle wallpaper"; }
+    Mod+Tab repeat=false { spawn-sh "noctalia msg window-switcher"; }
+    Print repeat=false { spawn-sh "noctalia msg screenshot-region"; }
+    Mod+Print repeat=false { spawn-sh "noctalia msg screenshot-fullscreen"; }
+    Mod+Shift+S repeat=false { spawn-sh "noctalia msg plugin noctalia/screen_recorder:service all toggle"; }
+
+    // Hardware keys (also on the lock screen)
+    XF86AudioRaiseVolume allow-when-locked=true { spawn-sh "noctalia msg volume-up"; }
+    XF86AudioLowerVolume allow-when-locked=true { spawn-sh "noctalia msg volume-down"; }
+    XF86AudioMute allow-when-locked=true { spawn-sh "noctalia msg volume-mute"; }
+    XF86AudioMicMute allow-when-locked=true { spawn-sh "noctalia msg mic-mute"; }
+    XF86AudioPlay allow-when-locked=true { spawn-sh "noctalia msg media toggle"; }
+    XF86AudioPause allow-when-locked=true { spawn-sh "noctalia msg media toggle"; }
+    XF86AudioNext allow-when-locked=true { spawn-sh "noctalia msg media next"; }
+    XF86AudioPrev allow-when-locked=true { spawn-sh "noctalia msg media previous"; }
+    XF86MonBrightnessUp allow-when-locked=true { spawn-sh "noctalia msg brightness-up"; }
+    XF86MonBrightnessDown allow-when-locked=true { spawn-sh "noctalia msg brightness-down"; }
+}

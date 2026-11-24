@@ -313,7 +313,7 @@ TUI_EXTRAS=("fingerprint|Fingerprint login|Unlock sudo, the login and the lock s
   "home-snapshots|Hourly snapshots of /home|Every hour, kept 7 days, so a deleted file can be restored. No backup: Pika Backup copies to another drive."
   "grub-btrfs|Snapshots in the boot menu|A Fedora snapshots entry in the boot menu, to start the system as it was before an update.")
 declare -gA TUI_ON TUI_OFF_WHY TUI_DEFAULT
-ROLES=(terminal browser files editor)
+ROLES=(terminal browser files editor session)
 
 # tui_defaults: every choice's starting value: saved apps, remembered "no"s, what the hardware allows.
 tui_defaults() {
@@ -375,6 +375,8 @@ tui_source_label() {
     repo:docker) echo Docker ;;
     repo:brave) echo Brave ;;
     repo:vivaldi) echo Vivaldi ;;
+    copr:*) echo COPR ;;
+    noweak) echo Fedora ;;
     *) echo "${CAT_SOURCE[$1]:-}" ;;
   esac
 }
@@ -428,7 +430,7 @@ tui_screen_welcome() {
   tui_wizard_sidebar 0
   TUI_ROW=$TUI_R0
   tui_text "bright,,b" "Welcome"
-  tui_text fg "This turns Fedora into a Noctalia desktop: Umbriel, the Noctalia shell, its login screen and Luciole, with KDE Plasma as a fallback session."
+  tui_text fg "This turns Fedora into a Noctalia desktop: the Noctalia shell and its login screen on the compositor you choose (Umbriel, Hyprland, niri or MangoWC), with a minimal fallback desktop if you want one."
   tui_gap
   tui_text muted "What I found"
   tui_found green "$G_DONE" "$TUI_SYSTEM, online"
@@ -469,7 +471,11 @@ tui_screen_list() {
     role=${CAT_ROLE[$id]:-}
     if [[ -n "$role" && " $roles " != *" $role "* ]]; then roles+="${roles:+ }$role"; fi
   done
-  if [[ -n "$roles" ]]; then
+  if [[ "${TUI_PAGES[TUI_PAGE]}" == menu:desktop ]]; then
+    tui_put "$TUI_R0" "$TUI_C0" "$TUI_CW" muted "Compositors: tick one or more. $G_STAR = the one the login screen starts (D)."
+  elif [[ "${TUI_PAGES[TUI_PAGE]}" == menu:fallback ]]; then
+    tui_put "$TUI_R0" "$TUI_C0" "$TUI_CW" muted "Fallback: a minimal desktop for when the compositor breaks (optional)."
+  elif [[ -n "$roles" ]]; then
     tui_put "$TUI_R0" "$TUI_C0" "$TUI_CW" muted "$page_title: tick any. $G_STAR = the default ${roles// /, } (D)."
   elif [[ "${TUI_PAGES[TUI_PAGE]}" == extras ]]; then
     tui_put "$TUI_R0" "$TUI_C0" "$TUI_CW" muted "Extras: things to set up besides the apps."
@@ -546,7 +552,11 @@ tui_screen_list() {
       role=${CAT_ROLE[$id]:-}
       if [[ -n "$role" ]]; then
         tui_gap
-        if [[ "${TUI_DEFAULT[$role]:-}" == "$id" ]]; then
+        if [[ "$role" == session && "${TUI_DEFAULT[$role]:-}" == "$id" ]]; then
+          tui_text accent "$G_STAR the login screen starts it"
+        elif [[ "$role" == session ]]; then
+          tui_text muted "D makes the login screen start it."
+        elif [[ "${TUI_DEFAULT[$role]:-}" == "$id" ]]; then
           tui_text accent "$G_STAR the default $role"
         else
           tui_text muted "D makes it the default $role."
@@ -642,7 +652,7 @@ tui_screen_review() {
   tui_box "$top" "$col" "$bw" "$bh" "green,,b" "+ Adds"
   TUI_ROW=$((top + 1)) TUI_COL=$((col + 2)) TUI_TW=$((bw - 4)) TUI_RLIMIT=$((top + bh - 2))
   tui_text fg "${#TUI_PKGS[@]} packages"
-  tui_text fg "${#DNF_PLASMA[@]} for Plasma"
+  tui_text fg "$(chosen_by_source noweak | wc -l) for the fallback"
   tui_text fg "${#TUI_FLATPAKS[@]} Flatpak apps"
   repos="RPM Fusion, Terra, Flathub"
   for role in "${TUI_REPOS[@]}"; do repos+=", $(tui_repo_label "$role")"; done
@@ -651,9 +661,9 @@ tui_screen_review() {
   col=$((col + bw + 2))
   tui_box "$top" "$col" "$bw" "$bh" "accent,,b" "~ Sets up"
   TUI_ROW=$((top + 1)) TUI_COL=$((col + 2))
-  for role in "${ROLES[@]}"; do tui_text fg "$role: $(tui_default_label "$role")"; done
+  for role in terminal browser files editor; do tui_text fg "$role: $(tui_default_label "$role")"; done
   if [[ "$PRESET_CHOICE" == off ]]; then tui_text fg "look: plain Ayu"; else tui_text fg "look: $PRESET_CHOICE"; fi
-  tui_text fg "login: Umbriel"
+  tui_text fg "login: $(tui_default_label session)"
   if [[ -n "$TUI_MIGRATE" ]]; then tui_text muted "fedora-hyprland moved over"; fi
   col=$((col + bw + 2))
   tui_box "$top" "$col" "$bw" "$bh" "red,,b" "- Removes"
@@ -703,7 +713,7 @@ tui_pager_lines() {
   for id in $(found_drivers); do
     if [[ -n "${TUI_ON[$id]:-}" ]]; then TUI_PAGER+=("${DRV_LABEL[$id]}: ${DRV_PACKAGES[$id]}"); fi
   done
-  TUI_PAGER+=("# KDE Plasma fallback" "${DNF_PLASMA[@]}")
+  TUI_PAGER+=("# Qt theme" "${DNF_QT_THEME[@]}")
   if ((${#TUI_REMOVE[@]})); then TUI_PAGER+=("# Removed" "${TUI_REMOVE[@]}"); fi
 }
 
@@ -826,6 +836,15 @@ tui_goto() {
   esac
 }
 
+# tui_other_session_on ID -> 0 when a compositor other than ID is ticked.
+tui_other_session_on() {
+  local other
+  for other in $(catalog_ids desktop); do
+    if [[ "$other" != "$1" && -n "${TUI_ON[$other]:-}" ]]; then return 0; fi
+  done
+  return 1
+}
+
 # tui_list_key: a key on a menu or the extras page.
 tui_list_key() {
   local id role n
@@ -846,7 +865,13 @@ tui_list_key() {
     end) TUI_SEL=$((n - 1)) ;;
     space)
       if [[ -z "${TUI_OFF_WHY[$id]:-}" ]]; then
-        if [[ -n "${TUI_ON[$id]:-}" ]]; then TUI_ON[$id]=""; else TUI_ON[$id]=1; fi
+        if [[ -n "${TUI_ON[$id]:-}" ]]; then
+          # The last compositor stays: without one there is no desktop to log in to.
+          if [[ "${CAT_ROLE[$id]:-}" == session ]] && ! tui_other_session_on "$id"; then return 0; fi
+          TUI_ON[$id]=""
+        else
+          TUI_ON[$id]=1
+        fi
         tui_sync
       fi
       ;;

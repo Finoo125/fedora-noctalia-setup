@@ -1,18 +1,29 @@
 # shellcheck shell=bash
 # The software menus: every optional app, its menu, where it comes from and whether it is ticked by default.
 # Stable first: Fedora ("dnf") and RPM Fusion ("rpmfusion"), then Terra ("terra"), then the vendor's own RPM repo ("repo:NAME"),
-# Flathub only for apps without an RPM ("flatpak"). "script" runs a function (lib/apps.sh); "npm" and "uvtool" install
+# Flathub only for apps without an RPM ("flatpak"). "copr:NAME" for Hyprland, which Fedora and Terra don't carry
+# (Hyprland's own wiki points Fedora to that COPR); the COPR is only added when Hyprland is chosen. "noweak" installs
+# in its own transaction without weak dependencies: the fallback desktops stay minimal, with no second login manager. "script" runs a function (lib/apps.sh); "npm" and "uvtool" install
 # command-line tools for your user (~/.local/bin) with npm or uv, which come along. An app in two menus lists both
 # ("creative,office").
 
 # Menus in order: "id|title".
-CATEGORIES=("terminal|Terminal" "browser|Browser" "files|Files" "office|Office & text" "media|Media"
+CATEGORIES=("desktop|Compositors" "fallback|Fallback desktop" "terminal|Terminal" "browser|Browser" "files|Files" "office|Office & text" "media|Media"
   "creative|Creative & recording" "chat|Communication" "gaming|Gaming" "dev|Development" "langs|Languages"
   "ai|AI agents" "utils|Utilities")
 
 # "menus|id|label|default 1/0|role|source|packages|what it is". A role (terminal, browser, files, editor) means it can
-# be the default app for that job; the keybinds and "open with" follow the default.
+# be the default app for that job; the keybinds and "open with" follow the default. "session" is the compositor the
+# login screen starts.
 CATALOG=(
+  "desktop|umbriel|Umbriel|1|session|terra|umbriel-nightly xdg-desktop-portal-umbriel-nightly xwayland-satellite|Noctalia's own compositor: effects, overview, linked desks. Nightly build from Terra."
+  "desktop|hyprland|Hyprland|0|session|copr:lionheartp/Hyprland|hyprland hyprland-uwsm uwsm xdg-desktop-portal-hyprland hyprland-guiutils hyprpicker|Dynamic tiling with animations and blur. From the lionheartp COPR, which Hyprland recommends for Fedora."
+  "desktop|niri|niri|0|session|dnf|niri xdg-desktop-portal-gnome xwayland-satellite|Scrollable tiling: windows in columns on an endless strip. Fedora's own package."
+  "desktop|mango|MangoWC|0|session|terra|mangowm xdg-desktop-portal-wlr xwayland-satellite|Light dwl-based compositor with tags, scroller layout and blur. From Terra."
+
+  "fallback|plasma|KDE Plasma|1||noweak|plasma-workspace plasma-desktop kwin plasma-systemsettings kscreen plasma-nm plasma-pa powerdevil bluedevil polkit-kde xdg-desktop-portal-kde|Minimal Plasma session on the login screen, for when the compositor or a game misbehaves. Same colors and passwords."
+  "fallback|gnome|GNOME|0||noweak|gnome-shell gnome-session-wayland-session gnome-control-center xdg-desktop-portal-gnome|Minimal GNOME session on the login screen: the shell and its settings, no extra apps, no GDM."
+
   "terminal|ghostty|Ghostty|1|terminal|terra|ghostty|Fast GPU terminal, tabs and splits, in the desktop's colors."
   "terminal|kitty|kitty|1|terminal|dnf|kitty|GPU terminal with images, tabs and layouts, in the desktop's colors."
   "terminal|foot|foot|0|terminal|dnf|foot|Small and fast Wayland terminal."
@@ -245,7 +256,7 @@ chosen_by_source() {
   while read -r id; do
     source=${CAT_SOURCE[$id]} pkgs=${CAT_PACKAGES[$id]}
     case "$1:$source" in
-      terra:terra | flatpak:flatpak | npm:npm | uvtool:uvtool | rpm:dnf | rpm:rpmfusion | rpm:terra | rpm:repo:*)
+      terra:terra | flatpak:flatpak | npm:npm | uvtool:uvtool | noweak:noweak | rpm:dnf | rpm:rpmfusion | rpm:terra | rpm:repo:* | rpm:copr:*)
         tr ' ' '\n' <<<"$pkgs"
         ;;
       # npm and uv install the command-line agents, so they come along.
@@ -253,6 +264,7 @@ chosen_by_source() {
       rpm:uvtool) echo uv ;;
       script:script) echo "$pkgs" ;;
       repo:repo:*) echo "${source#repo:}" ;;
+      copr:copr:*) echo "${source#copr:}" ;;
     esac
   done < <(chosen_items) | awk '!seen[$0]++'
 }

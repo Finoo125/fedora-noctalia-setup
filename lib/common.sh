@@ -16,7 +16,7 @@ load_choices() {
     case "$key" in
       items) [[ -n "${SOFTWARE_ITEMS+set}" ]] || SOFTWARE_ITEMS="$value" ;;
       drivers) [[ -n "${DRIVER_ITEMS+set}" ]] || DRIVER_ITEMS="$value" ;;
-      default-terminal | default-browser | default-files | default-editor)
+      default-terminal | default-browser | default-files | default-editor | default-session)
         key="DEFAULT_${key#default-}"
         key=${key^^}
         [[ -n "${!key:-}" ]] || printf -v "$key" '%s' "$value"
@@ -32,7 +32,7 @@ save_choices() {
   {
     printf 'items=%s\n' "${SOFTWARE_ITEMS-$(default_items | tr '\n' ' ')}"
     if [[ -n "${DRIVER_ITEMS+set}" ]]; then printf 'drivers=%s\n' "$DRIVER_ITEMS"; fi
-    for role in terminal browser files editor; do
+    for role in terminal browser files editor session; do
       var="DEFAULT_${role^^}"
       if [[ -n "${!var:-}" ]]; then printf 'default-%s=%s\n' "$role" "${!var}"; fi
     done

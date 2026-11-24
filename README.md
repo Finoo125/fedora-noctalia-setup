@@ -53,28 +53,37 @@ systemctl reboot
 Run it as your normal user. In a terminal it opens a full-screen installer:
 
 1. **Welcome:** what it found (Fedora version, btrfs, keyboard and timezone, GPU, login screen, an old fedora-hyprland).
-2. **One menu per kind of software**, each with the popular choices and where they come from: Terminal, Browser,
+2. **Compositors:** Umbriel (Terra, the default), Hyprland (the lionheartp COPR, which Hyprland's own wiki recommends
+   for Fedora; added only when you tick it), niri (Fedora) and MangoWC (Terra). Tick one or more; **D** picks the one
+   the login screen starts, the others are one click away there. Each gets the same keybinds, starts Noctalia, takes
+   the look's colors, keeps passwords in gnome-keyring and opens files with Luciole.
+3. **Fallback desktop** (optional): KDE Plasma (ticked by default) and/or GNOME, each only the shell and its settings,
+   installed without weak dependencies, so no extra apps and no second login manager: a bridge for when the
+   compositor breaks after an update.
+4. **One menu per kind of software**, each with the popular choices and where they come from: Terminal, Browser,
    Files, Office & text, Media, Creative & recording, Communication, Gaming, Development, Languages, AI agents,
    Utilities. Tick any number;
    in the Terminal, Browser, Files and editor menus **D** marks the default app (★), which Super+Return, Super+W,
    Super+E, Super+T and "open with" follow.
-3. **Drivers:** a scan of this machine's hardware (read from `/sys`, so it works on a fresh install) and what it needs:
+5. **Drivers:** a scan of this machine's hardware (read from `/sys`, so it works on a fresh install) and what it needs:
    NVIDIA (RTX 20 and newer), AMD (Vulkan, video codecs; optional LACT and ROCm), Intel (video decoding, Vulkan;
    optional oneAPI compute, the NPU), Broadcom Wi-Fi, Intel IPU6 webcams, Logitech, Razer, Corsair and gaming mice,
    the Xbox Wireless Adapter, game controllers, smart card readers, rotation sensors, ASUS laptops. Recommended
    drivers are ticked. `./install.sh --scan` prints the same list.
-4. **Extras:** fingerprint login (when a reader was found), hourly `/home` snapshots, snapshots in the boot menu.
-5. **Look:** one of the `noctalia-preset` looks, or plain Ayu.
-6. **Review:** what will be added, set up and removed. Nothing changes before **Install now**; **Show every package**
+6. **Extras:** fingerprint login (when a reader was found), hourly `/home` snapshots, snapshots in the boot menu.
+7. **Look:** one of the `noctalia-preset` looks, or plain Ayu.
+8. **Review:** what will be added, set up and removed. Nothing changes before **Install now**; **Show every package**
    lists them all.
-7. **Install:** asks for your password once, then shows each step, dnf's progress and the latest log lines.
-8. **Done:** enrolls the fingerprint if you ticked it, and reboots if you want.
+9. **Install:** asks for your password once, then shows each step, dnf's progress and the latest log lines.
+10. **Done:** enrolls the fingerprint if you ticked it, and reboots if you want.
 
-Umbriel, Noctalia, the login screen, the Plasma fallback and the basic KDE tools (Ark, KCalc, Partition Manager,
-Discover, KDE Connect) are always installed.
+Noctalia, the login screen and the basic KDE tools (Ark, KCalc, Partition Manager, Discover, KDE Connect) are always
+installed.
 
 | Menu | Choices (★ ticked by default) |
 |---|---|
+| Compositors | Umbriel★, Hyprland, niri, MangoWC |
+| Fallback desktop | KDE Plasma★, GNOME |
 | Terminal | Ghostty★, kitty★, foot, Alacritty, Konsole |
 | Browser | Firefox★, Chromium, Helium, Zen Browser, LibreWolf, Brave, Vivaldi, Google Chrome, Microsoft Edge, Ungoogled Chromium |
 | Files | Luciole★, Dolphin★, Nautilus, Nemo, Thunar, PCManFM-Qt, Yazi |

@@ -9,8 +9,8 @@ builtin = "Ayu"
 enable_builtin_templates = true
 # kcolorscheme: ~/.local/share/color-schemes/noctalia.colors for Dolphin and every KDE/Qt app (via the kde Qt theme),
 # merged into kdeglobals so the Plasma fallback has the same colors. It replaces the plain Qt (qt6ct) template.
-builtin_ids = ["gtk3", "gtk4", "kcolorscheme", "ghostty", "kitty", "btop", "umbriel", "firefox", "luciole"]   # Firefox also needs the Pywalfox extension
-# umbriel: ~/.config/umbriel/noctalia.toml, the border and overview colors
+builtin_ids = ["gtk3", "gtk4", "kcolorscheme", "ghostty", "kitty", "btop", "umbriel", "hyprland", "niri", "mango", "foot", "alacritty", "firefox", "luciole"]   # Firefox also needs the Pywalfox extension
+# umbriel, hyprland, niri, mango: border and overview colors for each compositor (noctalia.toml/.lua/.kdl/.conf)
 
 [shell]
 polkit_agent = true   # password prompts for Btrfs Assistant, Discover and other admin actions

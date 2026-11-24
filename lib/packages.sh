@@ -9,9 +9,9 @@ OLD_COPR="lionheartp/Hyprland"
 OLD_COPR_ID="copr:copr.fedorainfracloud.org:lionheartp:Hyprland"
 
 DNF_BASE=(dnf5-plugins flatpak pciutils jq)
-# The desktop: Umbriel (compositor, Terra nightly), Noctalia (shell, stable from Fedora), the Noctalia login screen.
-# Umbriel runs its own systemd session (umbriel-session.target), so no uwsm. xwayland-satellite runs X11 apps (Steam).
-DNF_DESKTOP=(umbriel-nightly xdg-desktop-portal-umbriel-nightly xwayland-satellite xdg-desktop-portal-gtk noctalia greetd noctalia-greeter
+# The desktop: Noctalia (shell, stable from Fedora) and its login screen. The compositors (Umbriel, Hyprland, niri,
+# MangoWC) and the fallback desktops (Plasma, GNOME) are menus in lib/catalog.sh.
+DNF_DESKTOP=(xdg-desktop-portal-gtk noctalia greetd noctalia-greeter
   pipewire pipewire-pulseaudio wireplumber bluez NetworkManager-wifi nm-connection-editor tuned-ppd upower
   gnome-keyring gnome-keyring-pam gcr dconf ddcutil bolt polkit qt6-qtwayland plasma-breeze-qt6 adw-gtk3-theme papirus-icon-theme
   google-noto-sans-fonts google-noto-color-emoji-fonts jetbrains-mono-fonts-all
@@ -38,13 +38,10 @@ DNF_SYSTEM=(fuse-libs avahi nss-mdns
 DNF_NVIDIA=(akmod-nvidia xorg-x11-drv-nvidia-cuda xorg-x11-drv-nvidia-libs.i686 xorg-x11-drv-nvidia-power
   libva-nvidia-driver switcheroo-control)
 DNF_SECUREBOOT=(kmodtool akmods mokutil openssl)
-# Minimal KDE Plasma, always installed: a fallback session on the login screen for when Umbriel (a nightly build)
-# breaks or a game misbehaves in it. Installed without weak dependencies, so no Plasma Login Manager, KWallet or
-# kde-gtk-config (which rewrites the GTK settings). plasma-integration is the "kde" Qt platform theme: Qt and KDE apps
-# read Noctalia's colors, Breeze, Papirus and the fonts from kdeglobals, in Umbriel too. It needs KWin and
-# plasma-workspace, so it comes with Plasma, without weak dependencies, instead of in the main install.
-DNF_PLASMA=(plasma-workspace plasma-desktop kwin plasma-systemsettings kscreen plasma-nm plasma-pa powerdevil bluedevil
-  polkit-kde xdg-desktop-portal-kde plasma-integration)
+# plasma-integration is the "kde" Qt platform theme: Qt and KDE apps read Noctalia's colors, Breeze, Papirus and the
+# fonts from kdeglobals. Only its weak dependencies would bring KWin and plasma-workspace, so it is installed without
+# them, whether or not the Plasma fallback is chosen.
+DNF_QT_THEME=(plasma-integration)
 # Replaced by the KDE apps; removed once when an older install is migrated (see remove_replaced_apps), unless
 # chosen in a menu (Thunar, VLC, Papers and GNOME Text Editor are choices now).
 # Also the Hyprland stack of a fedora-hyprland install (it came from the lionheartp COPR, which is removed).
@@ -58,8 +55,9 @@ FLATPAK_THEMES=(org.gtk.Gtk3theme.adw-gtk3 org.gtk.Gtk3theme.adw-gtk3-dark)
 # all_dnf_packages -> every dnf package the installer may install, one per line (CI checks they exist).
 all_dnf_packages() {
   printf '%s\n' "${DNF_BASE[@]}" "${DNF_DESKTOP[@]}" "${DNF_APPS[@]}" "${DNF_STORAGE[@]}" "${DNF_CLI[@]}" "${DNF_MEDIA[@]}" \
-    "${DNF_SYSTEM[@]}" "${DNF_NVIDIA[@]}" "${DNF_SECUREBOOT[@]}" "${DNF_AMD[@]}" "${DNF_PLASMA[@]}" ffmpeg
+    "${DNF_SYSTEM[@]}" "${DNF_NVIDIA[@]}" "${DNF_SECUREBOOT[@]}" "${DNF_AMD[@]}" "${DNF_QT_THEME[@]}" ffmpeg
   all_by_source rpm
+  all_by_source noweak
   all_driver_packages rpm
 }
 
@@ -79,12 +77,11 @@ main_dnf_packages() {
 }
 
 # Other desktops' shells, sessions and login managers. A dependency that drags one in (as GParted once did
-# with GNOME Shell) installs hundreds of MB the Umbriel setup never uses. Plasma comes only from DNF_PLASMA.
-FOREIGN_DESKTOP=(hyprland gnome-shell gnome-session mutter gdm kwin plasma-workspace sddm plasma-login-manager cinnamon
+# with GNOME Shell) installs hundreds of MB the Umbriel setup never uses. The fallbacks come from their own menu.
+FOREIGN_DESKTOP=(hyprland niri mangowm gnome-shell gnome-session mutter gdm kwin plasma-workspace sddm plasma-login-manager cinnamon
   xfce4-session mate-session-manager lightdm)
-# The Plasma fallback may bring KDE's own pieces, but never a second login manager or another desktop.
-FOREIGN_TO_PLASMA=(hyprland gnome-shell gnome-session mutter gdm sddm plasma-login-manager cinnamon xfce4-session
-  mate-session-manager lightdm)
+# The fallback desktops bring their own shell, but never a login manager or yet another desktop.
+FOREIGN_TO_FALLBACK=(gdm sddm plasma-login-manager lightdm cinnamon xfce4-session mate-session-manager)
 
 # foreign_desktop_packages [NAME...]: stdin = `dnf install --assumeno` output -> the packages it would install
 # that are in NAME... (default: FOREIGN_DESKTOP).
@@ -114,8 +111,11 @@ setup_repos() {
       "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-${fedora}.noarch.rpm" \
       "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-${fedora}.noarch.rpm"
   fi
-  # fedora-hyprland's Hyprland COPR: nothing here comes from it any more.
-  if dnf repo list --all 2>/dev/null | grep -q "^$OLD_COPR_ID "; then sudo dnf copr remove -y "$OLD_COPR"; fi
+  # COPRs only for what is chosen (Hyprland); fedora-hyprland's Hyprland COPR goes when Hyprland isn't.
+  for repo in $(chosen_by_source copr); do sudo dnf copr enable -y "$repo"; done
+  if ! chosen_by_source copr | grep -qx "$OLD_COPR" && dnf repo list --all 2>/dev/null | grep -q "^$OLD_COPR_ID "; then
+    sudo dnf copr remove -y "$OLD_COPR"
+  fi
   if ! rpm -q terra-release >/dev/null 2>&1; then
     # shellcheck disable=SC2016 # $releasever is expanded by dnf, not by the shell
     sudo dnf install -y --nogpgcheck --repofrompath 'terra,https://repos.fyralabs.com/terra$releasever' terra-release
@@ -147,7 +147,10 @@ install_packages() {
   sudo dnf install -y "f$(rpm -E %fedora)-backgrounds-base" || warn "Fedora's wallpaper package isn't available."
   # Minimal Install leaves out the firmware for Wi-Fi, Bluetooth and audio chips (e.g. Intel iwlwifi).
   sudo dnf group install -y hardware-support
-  sudo dnf install -y --setopt=install_weak_deps=False "${DNF_PLASMA[@]}"
+  # The Qt theme and the chosen fallback desktops, without weak dependencies (no login manager, no extra apps).
+  local -a fallback
+  mapfile -t fallback < <(chosen_by_source noweak)
+  sudo dnf install -y --setopt=install_weak_deps=False "${DNF_QT_THEME[@]}" "${fallback[@]}"
   remove_replaced_apps
 }
 

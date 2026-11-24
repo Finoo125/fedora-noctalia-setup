@@ -86,7 +86,8 @@ dry_run() {
   echo "dnf packages:"
   main_dnf_packages | sort | column -c "${COLUMNS:-100}"
   echo
-  echo "KDE Plasma fallback: ${DNF_PLASMA[*]}"
+  echo "Compositors: $(for id in $(catalog_ids desktop); do item_on "$id" && printf '%s ' "${CAT_LABEL[$id]}"; done)(login: $(default_for session))"
+  echo "Fallback desktop (no weak deps): $(chosen_by_source noweak | tr '\n' ' ')"
   echo "Flatpak apps: $(chosen_by_source flatpak | tr '\n' ' ')"
   echo "Vendor repos: $(chosen_by_source repo | tr '\n' ' ')"
   echo "Drivers: $(for id in $(found_drivers); do driver_on "$id" && printf '%s, ' "${DRV_LABEL[$id]}"; done | sed 's/, $//')"

@@ -126,9 +126,9 @@ size = 32
 
 # Apps: the default terminal, browser, file manager and editor chosen in the installer (or later with xdg-mime).
 "Mod+Return" = { action = "spawn xdg-terminal-exec", repeat = false }
-"Mod+E" = { action = "spawn ~/.config/umbriel/scripts/open-default.sh files", repeat = false }
-"Mod+W" = { action = "spawn ~/.config/umbriel/scripts/open-default.sh browser", repeat = false }
-"Mod+T" = { action = "spawn ~/.config/umbriel/scripts/open-default.sh editor", repeat = false }
+"Mod+E" = { action = "spawn open-default files", repeat = false }
+"Mod+W" = { action = "spawn open-default browser", repeat = false }
+"Mod+T" = { action = "spawn open-default editor", repeat = false }
 "Mod+C" = { action = "spawn kcalc", repeat = false }
 "XF86Calculator" = { action = "spawn kcalc", repeat = false }
 "Ctrl+Shift+Escape" = { action = "spawn xdg-terminal-exec btop", repeat = false }

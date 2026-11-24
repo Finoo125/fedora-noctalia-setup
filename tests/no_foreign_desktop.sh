@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # CI only, right after tests/repoquery.sh in the same fedora:45 container (its repos are already set up):
 # resolves install_packages' dnf transaction without installing it and fails if a dependency would pull in
-# another desktop (GNOME Shell, KDE, GDM, ...), and that the Plasma fallback brings no second login manager.
+# another desktop (GNOME Shell, KDE, GDM, ...), and that the fallback desktops bring no login manager.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source lib/common.sh
@@ -25,6 +25,7 @@ check() {
 
 mapfile -t pkgs < <(main_dnf_packages)
 check "main install" "$(LC_ALL=C dnf install -y --assumeno "${pkgs[@]}" 2>&1 || true)" "${FOREIGN_DESKTOP[@]}"
-# The Plasma fallback is its own transaction, without weak dependencies, on top of the main install.
-check "Plasma fallback" "$(LC_ALL=C dnf install -y --assumeno --setopt=install_weak_deps=False "${pkgs[@]}" "${DNF_PLASMA[@]}" 2>&1 || true)" \
-  "${FOREIGN_TO_PLASMA[@]}"
+# The Qt theme and the fallback desktops (both, the worst case) are their own transaction, without weak dependencies.
+mapfile -t fallback < <(SOFTWARE_ITEMS="plasma gnome"; chosen_by_source noweak)
+check "Qt theme and fallback desktops" "$(LC_ALL=C dnf install -y --assumeno --setopt=install_weak_deps=False "${pkgs[@]}" \
+  "${DNF_QT_THEME[@]}" "${fallback[@]}" 2>&1 || true)" "${FOREIGN_TO_FALLBACK[@]}"

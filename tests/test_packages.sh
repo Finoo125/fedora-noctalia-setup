@@ -20,17 +20,28 @@ assert_eq $'terra-extras\nterra-mesa' "$(terra_extra_repos <<<"$repo_list")" "on
 
 all=$(all_dnf_packages)
 assert_true  "Umbriel is in the list"         grep -qx umbriel-nightly <<<"$all"
-assert_false "Hyprland is gone"               grep -qx hyprland <<<"$all"
-assert_false "no uwsm: Umbriel has its own systemd session" grep -qx uwsm <<<"$all"
+default_main=$(main_dnf_packages)
+assert_true  "Umbriel is the default compositor"   grep -qx umbriel-nightly <<<"$default_main"
+assert_false "Hyprland only when it is chosen"     grep -qx hyprland <<<"$default_main"
+assert_false "no uwsm unless Hyprland is chosen"   grep -qx uwsm <<<"$default_main"
+assert_true  "Hyprland comes with uwsm"            grep -qx uwsm <<<"$(SOFTWARE_ITEMS="hyprland"; main_dnf_packages)"
+assert_eq "lionheartp/Hyprland" "$(SOFTWARE_ITEMS="hyprland niri"; chosen_by_source copr)" "only Hyprland adds a COPR"
+assert_eq "" "$(chosen_by_source copr)" "a default install adds no COPR"
+assert_true  "niri comes with GNOME's portal (screen sharing)" grep -qx xdg-desktop-portal-gnome <<<"$(SOFTWARE_ITEMS="niri"; main_dnf_packages)"
+assert_true  "MangoWC comes with the wlr portal"   grep -qx xdg-desktop-portal-wlr <<<"$(SOFTWARE_ITEMS="mango"; main_dnf_packages)"
 assert_true  "Qt apps get the kde platform theme" grep -qx plasma-integration <<<"$all"
-assert_true  "the Qt theme comes with Plasma, without weak deps" grep -qx plasma-integration < <(printf '%s\n' "${DNF_PLASMA[@]}")
+assert_true  "the Qt theme is installed on its own, without weak deps" grep -qx plasma-integration < <(printf '%s\n' "${DNF_QT_THEME[@]}")
+assert_false "the fallback isn't in the main transaction" grep -qx plasma-workspace <<<"$default_main"
+assert_true  "Plasma is the default fallback"      grep -qx plasma-workspace <<<"$(chosen_by_source noweak)"
+assert_eq "" "$(SOFTWARE_ITEMS="umbriel"; chosen_by_source noweak)" "no fallback at all is possible"
+assert_true  "GNOME is a fallback choice"          grep -qx gnome-shell <<<"$(SOFTWARE_ITEMS="gnome"; chosen_by_source noweak)"
 assert_false "no COPR left"                   grep -q 'COPR_REPO=' lib/packages.sh
 assert_true  "noctalia is in the list"        grep -qx noctalia <<<"$all"
 assert_true  "NVIDIA packages are checked too" grep -qx akmod-nvidia <<<"$all"
 assert_false "cliphist is not needed"         grep -qx cliphist <<<"$all"
 assert_true  "dconf is installed so gsettings really saves" grep -qx dconf <<<"$all"
 assert_false "no Qt5: it pulls in all of KF5 for no app" grep -qx qt5-qtwayland <<<"$all"
-assert_eq "$(sort <<<"$all" | uniq -d)" "" "no package is listed twice"
+assert_eq "" "$(printf '%s\n' "${DNF_DESKTOP[@]}" "${DNF_APPS[@]}" "${DNF_STORAGE[@]}" "${DNF_CLI[@]}" "${DNF_SYSTEM[@]}" | sort | uniq -d)" "no base package is listed twice"
 assert_true  "the login unlocks the keyring"   grep -qx gnome-keyring-pam <<<"$all"
 assert_true  "NAS files open in non-KDE apps"  grep -qx kio-fuse <<<"$all"
 assert_true  "btrfs gets scrubbed"             grep -qx btrfsmaintenance <<<"$all"
@@ -80,7 +91,7 @@ Installing:
  plasma-login-manager  x86_64 6.7.5-1.fc44       updates      1.0 MiB
 Transaction Summary:
  Installing:         3 packages'
-assert_eq "plasma-login-manager" "$(foreign_desktop_packages "${FOREIGN_TO_PLASMA[@]}" <<<"$plasma_transaction")" \
+assert_eq "plasma-login-manager" "$(foreign_desktop_packages "${FOREIGN_TO_FALLBACK[@]}" <<<"$plasma_transaction")" \
   "the Plasma fallback may bring KWin, but no second login manager"
 assert_eq $'plasma-workspace\nkwin\nplasma-login-manager' "$(foreign_desktop_packages <<<"$plasma_transaction")" \
   "the main install may bring no Plasma at all"
@@ -108,18 +119,18 @@ assert_false "no Docker when it isn't chosen"         grep -qx docker-ce <<<"$le
 assert_true  "a chosen app's packages come along"     grep -qx cups <<<"$lean"
 assert_true  "a vendor repo's app is installed"       grep -qx brave-browser <<<"$lean"
 assert_eq "brave" "$(SOFTWARE_ITEMS="brave printing"; chosen_by_source repo)" "only the chosen vendor repos are added"
-assert_true  "the desktop is always installed"        grep -qx umbriel-nightly <<<"$lean"
+assert_true  "the shell is always installed"         grep -qx noctalia <<<"$lean"
 assert_true  "the base KDE tools are always installed" grep -qx ark <<<"$lean"
 none=$(SOFTWARE_ITEMS=""; main_dnf_packages)
 assert_false "an empty choice means no apps, not the defaults" grep -qx cups <<<"$none"
 assert_eq "" "$(SOFTWARE_ITEMS=""; chosen_by_source flatpak)" "no Flatpaks without a choice of one"
-assert_eq "$(sort <<<"$all" | uniq -d)" "" "menus don't repeat base packages"
+assert_eq "" "$(main_dnf_packages | sort | uniq -d)" "menus don't repeat base packages"
 
 # The catalog itself.
 assert_eq "" "$(printf '%s\n' "${CAT_IDS[@]}" | sort | uniq -d)" "every app id is unique"
 for id in "${CAT_IDS[@]}"; do
   case "${CAT_SOURCE[$id]}" in
-    dnf | rpmfusion | terra | flatpak | script | npm | uvtool | repo:vscode | repo:docker | repo:brave | repo:vivaldi | repo:chrome | repo:edge) ;;
+    dnf | rpmfusion | terra | flatpak | script | npm | uvtool | repo:vscode | repo:docker | repo:brave | repo:vivaldi | repo:chrome | repo:edge | copr:lionheartp/Hyprland | noweak) ;;
     *) assert_eq "a known source" "${CAT_SOURCE[$id]}" "$id has a known source" ;;
   esac
   for menu in ${CAT_MENU[$id]//,/ }; do

@@ -5,10 +5,23 @@ GREETER_DIR=/var/lib/noctalia-greeter
 PAPIRUS_FOLDERS_SHA=0f838ee5679229e3a3e97e3b333c222c9e9615b4
 GRUB_BTRFS_SHA=2fcfbe967637166b88dadd49c834807243a941bf # v4.14; Fedora packages no grub-btrfs
 
-# greeter_session SESSIONS_DIR -> session the greeter preselects: Umbriel, or Plasma when Umbriel is missing.
-# The other sessions stay one click away on the login screen.
+# session_name ID -> the login session of a compositor or fallback desktop (its file in /usr/share/wayland-sessions).
+session_name() {
+  case "$1" in
+    hyprland) echo hyprland-uwsm ;;
+    *) echo "$1" ;;
+  esac
+}
+
+# greeter_session SESSIONS_DIR -> session the greeter preselects: the default compositor (D in the installer), else
+# the first installed compositor, else a fallback desktop. The others stay one click away on the login screen.
 greeter_session() {
-  if [[ -f "$1/umbriel.desktop" ]]; then echo umbriel; else echo plasma; fi
+  local id name
+  for id in $(default_for session) umbriel hyprland niri mango plasma gnome; do
+    name=$(session_name "$id")
+    if [[ -f "$1/$name.desktop" ]]; then echo "$name"; return 0; fi
+  done
+  echo umbriel
 }
 
 # greeter_cmd -> full path of the greeter's session wrapper; fails if it's missing (never an empty greetd command).
@@ -194,6 +207,8 @@ OLD_SYSTEM_FILES=(/etc/sysctl.d/60-fedora-hyprland-gaming.conf /etc/udev/rules.d
 setup_system() {
   local -a abrt
   sudo rm -f "${OLD_SYSTEM_FILES[@]}"
+  # The keybinds of every compositor start the default apps with it.
+  sudo install -m 755 "$REPO_DIR/bin/open-default" /usr/local/bin/open-default
   setup_greeter
   setup_fingerprint
   setup_snapper

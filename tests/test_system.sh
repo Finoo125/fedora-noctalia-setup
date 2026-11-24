@@ -3,6 +3,7 @@ set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 source tests/lib.sh
 source lib/common.sh
+source lib/catalog.sh
 source lib/system.sh
 
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
@@ -10,6 +11,10 @@ touch "$tmp/plasma.desktop"
 assert_eq "plasma" "$(greeter_session "$tmp")" "Plasma when Umbriel is missing"
 touch "$tmp/umbriel.desktop"
 assert_eq "umbriel" "$(greeter_session "$tmp")" "Umbriel is the default session"
+touch "$tmp/niri.desktop" "$tmp/hyprland-uwsm.desktop"
+assert_eq "niri" "$(SOFTWARE_ITEMS="umbriel niri" DEFAULT_SESSION=niri greeter_session "$tmp")" "the login screen starts the chosen compositor"
+assert_eq "hyprland-uwsm" "$(SOFTWARE_ITEMS="hyprland" greeter_session "$tmp")" "Hyprland starts through uwsm"
+assert_eq "umbriel" "$(SOFTWARE_ITEMS="mango" greeter_session "$tmp")" "a chosen compositor that isn't installed yet falls back"
 
 mkdir -p "$tmp/bin" "$tmp/nobin"
 printf '#!/bin/sh\n' >"$tmp/bin/noctalia-greeter-session"; chmod +x "$tmp/bin/noctalia-greeter-session"

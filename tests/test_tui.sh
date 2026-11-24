@@ -41,7 +41,18 @@ tui_pages
 tui_defaults
 assert_true  "default apps start ticked"           test -n "${TUI_ON[firefox]}"
 assert_false "other apps start unticked"           test -n "${TUI_ON[brave]}"
-assert_eq "19" "${#TUI_WIZARD[@]}" "welcome, 12 menus, drivers, extras, look, review, install, done"
+assert_eq "21" "${#TUI_WIZARD[@]}" "welcome, 14 menus, drivers, extras, look, review, install, done"
+# shellcheck disable=SC2153 # set by tui_pages
+assert_eq "menu:desktop" "${TUI_PAGES[1]}" "the compositors come first"
+assert_eq "umbriel" "${TUI_DEFAULT[session]}" "Umbriel starts as the login session"
+TUI_PAGE=1; TUI_SEL=0; KEY=space; tui_list_key
+assert_true "the last compositor can't be unticked" test -n "${TUI_ON[umbriel]}"
+TUI_SEL=2; KEY=d; tui_list_key
+assert_eq "niri" "${TUI_DEFAULT[session]}" "D picks the login session"
+TUI_SEL=0; KEY=space; tui_list_key
+assert_false "with niri ticked, Umbriel can go"     test -n "${TUI_ON[umbriel]}"
+KEY=space; tui_list_key; TUI_SEL=2; KEY=space; tui_list_key; TUI_DEFAULT[session]=umbriel
+TUI_PAGE=2; TUI_SEL=0; KEY=space; tui_list_key; KEY=space; tui_list_key
 assert_eq "ghostty" "${TUI_DEFAULT[terminal]}" "Ghostty starts as the default terminal"
 assert_true "the scanned Intel driver starts ticked" test -n "${TUI_ON[intel-graphics]}"
 assert_true "fingerprint login starts on where a reader was found" test -n "${TUI_ON[fingerprint]}"
@@ -52,7 +63,7 @@ plain() { sed -e 's/\x1b\[[0-9;?]*[A-Za-z]/ /g' <<<"$TUI_BUF"; }
 TUI_BTN=0; tui_screen_welcome
 assert_true "welcome greets"                        grep -q "Welcome" <<<"$(plain)"
 assert_false "no migration box on a new machine"    grep -q "fedora-hyprland found" <<<"$(plain)"
-TUI_PAGE=2; TUI_SEL=0; TUI_TOP=0; tui_screen_list
+TUI_PAGE=4; TUI_SEL=0; TUI_TOP=0; tui_screen_list
 assert_true "the browser menu lists Helium"         grep -q "Helium" <<<"$(plain)"
 assert_true "and says where it comes from"          grep -q "Terra" <<<"$(plain)"
 TUI_SEL=6; KEY=d; tui_list_key
@@ -63,18 +74,18 @@ assert_eq "firefox" "${TUI_DEFAULT[browser]}" "unticking the default falls back 
 TUI_SEL=0; KEY=space; tui_list_key
 assert_eq "" "${TUI_DEFAULT[browser]}" "no browser ticked, no default"
 KEY=space; tui_list_key
-TUI_PAGE=10; TUI_SEL=19; TUI_TOP=0; tui_screen_list
+TUI_PAGE=12; TUI_SEL=19; TUI_TOP=0; tui_screen_list
 assert_true "a long menu scrolls to the cursor"     grep -q "Julia" <<<"$(plain)"
-TUI_PAGE=13; TUI_SEL=0; TUI_TOP=0; tui_screen_list
+TUI_PAGE=15; TUI_SEL=0; TUI_TOP=0; tui_screen_list
 assert_true "the drivers page shows the scan"       grep -q "Intel graphics" <<<"$(plain)"
 hw_scan "" "" "" ""; TUI_SEL=0; tui_screen_list
 assert_true "a machine without extra drivers says so" grep -q "Nothing extra needed" <<<"$(plain)"
 KEY=space; tui_list_key
-assert_eq "13" "$TUI_PAGE" "keys on an empty drivers page don't fail"
+assert_eq "15" "$TUI_PAGE" "keys on an empty drivers page don't fail"
 hw_scan "8086 46a8 0300" "04f3 0c7e ff," "HP" ""
 
 TUI_ON[steam]="" TUI_ON[docker]=""
-TUI_PAGE=16; tui_plan
+TUI_PAGE=18; tui_plan
 # shellcheck disable=SC2153 # set by tui_plan
 assert_false "no Steam once it is unticked"         grep -qx steam < <(printf '%s\n' "${TUI_PKGS[@]}")
 assert_false "no Docker repo once Docker is unticked" grep -qx docker < <(printf '%s\n' "${TUI_REPOS[@]}")

@@ -2,7 +2,7 @@
 # Per-user configuration: config layering, Umbriel config, wallpapers, GTK/Qt/KDE settings.
 
 WALL_DIR="$HOME/Pictures/Wallpapers"
-UMBRIEL_SCRIPTS=(desks.sh dock.sh open-default.sh)
+UMBRIEL_SCRIPTS=(desks.sh dock.sh)
 
 # umbriel_stub REPO [CURSOR] -> ~/.config/umbriel/config.toml (written once, then it's yours). Umbriel applies the
 # included defaults first and this file last, so whatever is set here wins.
@@ -21,6 +21,88 @@ files = ["monitors.toml", "noctalia.toml"]
 # Your own changes go below this line.
 EOF
   if [[ -n "${2:-}" ]]; then printf '\n[input.cursor]\ntheme = "%s"\n' "$2"; fi
+}
+
+# hypr_stub REPO -> ~/.config/hypr/hyprland.lua (written once, then it's yours).
+hypr_stub() {
+  cat <<EOF
+-- Your Hyprland config. fedora-noctalia-setup created it once and never overwrites it.
+-- The defaults live in $1/config/hypr and update with the \`update\` command.
+require("$1/config/hypr/main.lua")("$1")
+
+-- Colors from Noctalia's hyprland template (noctalia.lua, written once Noctalia runs).
+pcall(function() require("noctalia").apply_theme() end)
+
+-- Your own changes go below this line.
+EOF
+}
+
+# niri_stub REPO LAYOUT VARIANT -> ~/.config/niri/config.kdl (written once, then it's yours). Settings below the
+# includes win over them.
+niri_stub() {
+  cat <<EOF
+// Your niri config. fedora-noctalia-setup created it once and never overwrites it.
+// The defaults live in $1/config/niri/defaults.kdl and update with the \`update\` command.
+include "$1/config/niri/defaults.kdl"
+// Colors from Noctalia's niri template, written once Noctalia runs.
+include optional=true "noctalia.kdl"
+
+// The system keyboard layout when this file was written (localectl).
+input {
+    keyboard {
+        xkb {
+            layout "$2"
+            variant "$3"
+        }
+    }
+}
+
+// Your own changes go below this line.
+EOF
+}
+
+# mango_stub REPO HOME LAYOUT VARIANT -> ~/.config/mango/config.conf (written once, then it's yours). Lines after the
+# sources win over them.
+mango_stub() {
+  cat <<EOF
+# Your MangoWC config. fedora-noctalia-setup created it once and never overwrites it.
+# The defaults live in $1/config/mango/defaults.conf and update with the \`update\` command.
+source=$1/config/mango/defaults.conf
+# Colors from Noctalia's mango template, written once Noctalia runs.
+source_optional=$2/.config/mango/noctalia.conf
+
+# The system keyboard layout when this file was written (localectl).
+xkb_rules_layout=$3
+EOF
+  # MangoWC rejects an empty value, so the variant line only when there is one.
+  if [[ -n "$4" ]]; then echo "xkb_rules_variant=$4"; fi
+  printf '\n# Your own changes go below this line.\n'
+}
+
+# setup_compositors CONFIG_DIR: the configs of the chosen compositors, each written once.
+setup_compositors() {
+  local layout variant hypr="$1/hypr/hyprland.lua"
+  layout=$(keyboard_layout "$XKB_CONF") variant=$(xkb_option "$XKB_CONF" Variant)
+  if item_on umbriel; then
+    copy_once "$REPO_DIR/config/xdg-desktop-portal/umbriel-portals.conf" "$1/xdg-desktop-portal/umbriel-portals.conf"
+    write_once "$1/umbriel/config.toml" "$(umbriel_stub "$REPO_DIR")"
+    link_umbriel_scripts "$REPO_DIR" "$1"
+  fi
+  if item_on hyprland; then
+    # fedora-hyprland's own stub becomes this repo's; your additions stay in the backup.
+    if grep -qs '/fedora-hyprland/config/hypr/main.lua' "$hypr"; then mv "$hypr" "$hypr.fedora-hyprland"; fi
+    write_once "$hypr" "$(hypr_stub "$REPO_DIR")"
+    copy_once "$REPO_DIR/config/uwsm/env" "$1/uwsm/env"
+    copy_once "$REPO_DIR/config/xdg-desktop-portal/hyprland-portals.conf" "$1/xdg-desktop-portal/hyprland-portals.conf"
+  fi
+  if item_on niri; then
+    write_once "$1/niri/config.kdl" "$(niri_stub "$REPO_DIR" "$layout" "$variant")"
+    copy_once "$REPO_DIR/config/xdg-desktop-portal/niri-portals.conf" "$1/xdg-desktop-portal/niri-portals.conf"
+  fi
+  if item_on mango; then
+    write_once "$1/mango/config.conf" "$(mango_stub "$REPO_DIR" "$HOME" "$layout" "$variant")"
+    copy_once "$REPO_DIR/config/xdg-desktop-portal/mango-portals.conf" "$1/xdg-desktop-portal/mango-portals.conf"
+  fi
 }
 
 # toml_value FILE SECTION KEY -> the quoted string value of KEY in [SECTION], empty when missing.
@@ -185,11 +267,10 @@ setup_user() {
   ln -sfn "$REPO_DIR/config/noctalia/00-fedora-noctalia.toml" "$HOME/.config/noctalia/00-fedora-noctalia.toml"
   migrate_from_fedora_hyprland "$HOME/.config"
   for item in ghostty/config kitty/kitty.conf gtk-3.0/settings.ini gtk-4.0/settings.ini mimeapps.list \
-    xdg-desktop-portal/umbriel-portals.conf xdg-desktop-portal/kde-portals.conf; do
+    xdg-desktop-portal/kde-portals.conf; do
     copy_once "$REPO_DIR/config/$item" "$HOME/.config/$item"
   done
-  write_once "$HOME/.config/umbriel/config.toml" "$(umbriel_stub "$REPO_DIR")"
-  link_umbriel_scripts "$REPO_DIR" "$HOME/.config"
+  setup_compositors "$HOME/.config"
   # Noctalia's btop template only switches the theme in an existing btop.conf; btop fills in the rest itself.
   write_once "$HOME/.config/btop/btop.conf" 'color_theme = "noctalia"'
   download_wallpapers "$list" "$WALL_DIR"

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Starts the default app for a job, for the keybinds: browser (Super+W), files (Super+E), editor (Super+T).
+# Starts the default app for a job, for the keybinds of every compositor: browser (Super+W), files (Super+E),
+# editor (Super+T). Installed as /usr/local/bin/open-default.
 # The defaults are the system's (xdg-mime), so a browser that makes itself the default is followed too.
 set -u
 case "${1:-}" in
