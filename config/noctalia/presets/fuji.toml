@@ -1,5 +1,6 @@
-# Preset "seaside": village street down to the sea. Waterfall style (faithful, capsule bar, glass).
-# wallpaper = ~/Pictures/Wallpapers/wallhaven-zypy2w.jpg
+# Preset "fuji": photo of Mount Fuji at sunrise, cherry blossoms and a mirror lake. wallpaper palette (faithful), glass panels, capsule bar, time at the top, calendar and music on the right.
+# wallpaper = ~/Pictures/Wallpapers/wallhaven-5ymyz7.jpg
+# source = https://w.wallhaven.cc/full/5y/wallhaven-5ymyz7.jpg
 [theme]
 source           = "wallpaper"
 wallpaper_scheme = "faithful"

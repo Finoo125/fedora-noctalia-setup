@@ -235,14 +235,27 @@ noctalia-preset waterfall  # use one
 noctalia-preset off        # back to Ayu and the wallpaper you had before
 ```
 
-| Look | Wallpaper | Style |
-|---|---|---|
-| `waterfall` | forest gorge with a turquoise lake | teal, capsule bar, see-through panels; time at the top, calendar and music on the right |
-| `island`, `lagoon`, `seaside`, `coast` | island, tropical lagoon, village street to the sea, coastal town | the waterfall style with other blue wallpapers |
-| `dusk` | golden field at sunset | warm, floating bar, soft panels |
-| `night` | the same field at night | deep blue, no bar background (only the capsules), see-through panels |
+| Look | Kind | Wallpaper | Style |
+|---|---|---|---|
+| `waterfall` | anime | forest gorge with a turquoise lake | faithful colors, glass capsule bar; time at the top, calendar and music on the right |
+| `sakura` | anime | cherry-blossom street mirrored in rain water | like waterfall |
+| `meadow` | anime | hilltop meadow under towering summer clouds | like waterfall, vibrant colors |
+| `valley` | anime | alpine valley with sun rays through the forest | like waterfall |
+| `starfall` | anime | violet sky full of shooting stars | vibrant, floating bar, soft panels |
+| `neon` | anime | neon city at night with glowing sakura | vibrant, no bar background (floating capsules) |
+| `fuji` | photo | Mount Fuji at sunrise, cherry blossoms, mirror lake | like waterfall |
+| `alpine` | photo | green alpine lake with a chalet below snowy peaks | like waterfall |
+| `twilight` | photo | Swiss lake at dusk with a lit castle | floating bar, soft panels |
+| `aurora` | photo | northern lights over a snowy fjord | floating capsules, glass panels |
+| `dunes` | photo | desert dunes under a glowing evening sky | vibrant, floating bar |
+| `contour` | abstract | violet contour lines on black | vibrant, floating capsules |
+| `fedora` | official | Fedora's own wallpaper of the installed release (night) | tonal, floating capsules |
 
-A look is a Noctalia config file in `config/noctalia/presets` with a `# wallpaper = PATH` line; the active one is
+The wallpapers are 4K and up, picked from wallhaven.cc's most-favorited scenery; the Fedora look is made from the
+release's own wallpaper (CC-BY-SA). Only waterfall's is downloaded during the install: every other look fetches its
+wallpaper the first time you pick it.
+
+A look is a Noctalia config file in `config/noctalia/presets` with `# wallpaper = PATH` and `# source = URL` lines; the active one is
 linked as `~/.config/noctalia/30-preset.toml`, so it updates with `update`. Your own go in `~/.config/noctalia-presets`
 and win over a repo look of the same name. The widget positions are made for a 1920x1080 screen; move them with
 Settings → Desktop → Toggle Editor (they are then saved in Noctalia's settings).

@@ -1,8 +1,9 @@
-# Preset "dusk": golden field at sunset. vibrant palette, floating rounded bar, soft panels.
-# wallpaper = ~/Pictures/Wallpapers/wallhaven-gw1qwq.png
+# Preset "twilight": photo of a Swiss lake at dusk with a lit castle. wallpaper palette (faithful), floating rounded bar, soft panels, clock and system monitor bottom left.
+# wallpaper = ~/Pictures/Wallpapers/wallhaven-mlz28k.jpg
+# source = https://w.wallhaven.cc/full/ml/wallhaven-mlz28k.jpg
 [theme]
 source           = "wallpaper"
-wallpaper_scheme = "vibrant"
+wallpaper_scheme = "faithful"
 terminal_colors  = "standard"
 
 [bar.default]

@@ -1,5 +1,6 @@
-# Preset "lagoon": tropical islands and turquoise lagoon from above. Waterfall style (faithful, capsule bar, glass).
-# wallpaper = ~/Pictures/Wallpapers/wallhaven-gp3ro3.jpg
+# Preset "alpine": photo of a green alpine lake with a chalet below snowy peaks. wallpaper palette (faithful), glass panels, capsule bar, time at the top, calendar and music on the right.
+# wallpaper = ~/Pictures/Wallpapers/wallhaven-1qqwq3.jpg
+# source = https://w.wallhaven.cc/full/1q/wallhaven-1qqwq3.jpg
 [theme]
 source           = "wallpaper"
 wallpaper_scheme = "faithful"

@@ -1,5 +1,6 @@
 # Preset "waterfall": calm forest gorge. wallpaper palette (faithful), glass panels, capsule bar.
 # wallpaper = ~/Pictures/Wallpapers/wallhaven-rq6j57.png
+# source = https://w.wallhaven.cc/full/rq/wallhaven-rq6j57.png
 [theme]
 source           = "wallpaper"
 wallpaper_scheme = "faithful"

@@ -1,8 +1,9 @@
-# Preset "night": blue field under the stars. tonal palette, transparent bar with floating capsules, glass panels.
-# wallpaper = ~/Pictures/Wallpapers/wallhaven-og71gl.png
+# Preset "aurora": photo of northern lights over a snowy fjord. wallpaper palette (faithful), no bar background (floating capsules only), glass panels.
+# wallpaper = ~/Pictures/Wallpapers/wallhaven-e83ve8.jpg
+# source = https://w.wallhaven.cc/full/e8/wallhaven-e83ve8.jpg
 [theme]
 source           = "wallpaper"
-wallpaper_scheme = "m3-tonal-spot"
+wallpaper_scheme = "faithful"
 terminal_colors  = "standard"
 
 [bar.default]

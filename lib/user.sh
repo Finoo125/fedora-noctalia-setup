@@ -106,6 +106,7 @@ apply_preset() {
   fi
   if [[ "$1" == off ]]; then rm -f "$active"; return 0; fi
   [[ -f "$file" ]] || { warn "There is no look named $1."; return 0; }
+  "$REPO_DIR/bin/noctalia-preset" fetch "$1" || warn "The wallpaper of $1 isn't there yet; noctalia-preset $1 gets it later."
   mkdir -p "$(dirname "$active")"
   ln -sfn "$file" "$active"
 }
@@ -209,6 +210,11 @@ setup_user() {
   mkdir -p "$HOME/.local/bin"
   ln -sfn "$REPO_DIR/bin/update" "$HOME/.local/bin/update"
   ln -sfn "$REPO_DIR/bin/noctalia-preset" "$HOME/.local/bin/noctalia-preset"
+  # A look that no longer exists (renamed or removed in an update) would leave a broken link in Noctalia's config.
+  if [[ -L "$HOME/.config/noctalia/30-preset.toml" && ! -e "$HOME/.config/noctalia/30-preset.toml" ]]; then
+    rm -f "$HOME/.config/noctalia/30-preset.toml"
+    warn "Your look was removed in this update; pick another with noctalia-preset."
+  fi
   if [[ -n "${PRESET_CHOICE:-}" ]]; then apply_preset "$PRESET_CHOICE"; fi
   if [[ -n "${APPLY_DEFAULTS:-}" ]]; then apply_default_apps; fi
 }

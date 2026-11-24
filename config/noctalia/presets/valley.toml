@@ -1,5 +1,6 @@
-# Preset "island": small island with gazebo in teal water. Waterfall style (faithful, capsule bar, glass).
-# wallpaper = ~/Pictures/Wallpapers/wallhaven-85mk1k.jpg
+# Preset "valley": anime alpine valley with sun rays through the forest. wallpaper palette (faithful), glass panels, capsule bar, time at the top, calendar and music on the right.
+# wallpaper = ~/Pictures/Wallpapers/wallhaven-d8k5rm.jpg
+# source = https://w.wallhaven.cc/full/d8/wallhaven-d8k5rm.jpg
 [theme]
 source           = "wallpaper"
 wallpaper_scheme = "faithful"

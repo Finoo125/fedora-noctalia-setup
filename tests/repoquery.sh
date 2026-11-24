@@ -18,9 +18,12 @@ mapfile -t wanted < <(all_dnf_packages)
 # -y like install.sh: Terra signs its repo metadata (repo_gpgcheck=1), and importing that key needs a yes.
 available=$(dnf repoquery -y --available --qf '%{name}.%{arch}\n' "${wanted[@]}")
 missing=0
+# Plain-text matching: names like gcc-c++ are not regexes. "name.arch" for i686 packages, else the name.
+# shellcheck disable=SC2001 # strips the arch from every line
+pkg_names=$(sed 's/\.[^.]*$//' <<<"$available")
 for p in "${wanted[@]}"; do
-  if [[ "$p" == *.i686 ]]; then pattern="^${p//./\\.}$"; else pattern="^${p//./\\.}\\."; fi
-  grep -qE "$pattern" <<<"$available" || { echo "missing dnf package: $p"; missing=1; }
+  if [[ "$p" == *.i686 ]]; then list=$available; else list=$pkg_names; fi
+  grep -qxF "$p" <<<"$list" || { echo "missing dnf package: $p"; missing=1; }
 done
 for app in $(all_by_source flatpak) "${FLATPAK_THEMES[@]}"; do
   flatpak remote-info flathub "$app" >/dev/null 2>&1 || { echo "missing flatpak: $app"; missing=1; }

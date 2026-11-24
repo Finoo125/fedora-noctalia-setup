@@ -1,8 +1,9 @@
-# Preset "coast": coastal town above a bay. Waterfall style (faithful, capsule bar, glass).
-# wallpaper = ~/Pictures/Wallpapers/wallhaven-d5ryjo.jpg
+# Preset "meadow": anime hilltop meadow under towering summer clouds. vibrant palette, glass panels, capsule bar, time at the top, calendar and music on the right.
+# wallpaper = ~/Pictures/Wallpapers/wallhaven-gw5ypd.jpg
+# source = https://w.wallhaven.cc/full/gw/wallhaven-gw5ypd.jpg
 [theme]
 source           = "wallpaper"
-wallpaper_scheme = "faithful"
+wallpaper_scheme = "vibrant"
 terminal_colors  = "standard"
 
 [bar.default]

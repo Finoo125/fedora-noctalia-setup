@@ -3,7 +3,10 @@
 # Presets come from this repo (config/noctalia/presets) and from ~/.config/noctalia-presets, where yours win by name.
 #   noctalia-preset          list the presets (* = active)
 #   noctalia-preset NAME     use NAME: its config and its wallpaper
+#   noctalia-preset fetch NAME  only get NAME's wallpaper (the installer uses it before Noctalia runs)
 #   noctalia-preset off      back to the plain setup and the wallpaper from before the first preset
+# A preset's "# source = URL" line says where its wallpaper comes from; it is downloaded the first time the preset
+# is used. "# source = fedora-night" (or -day) makes it from Fedora's own wallpaper of the installed release.
 set -euo pipefail
 repo_dir="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
 dirs=("$repo_dir/config/noctalia/presets" "${XDG_CONFIG_HOME:-$HOME/.config}/noctalia-presets")
@@ -19,6 +22,36 @@ preset_file() {
   return 1
 }
 
+# fetch_wallpaper FILE: gets a preset's wallpaper when it isn't there yet.
+fetch_wallpaper() {
+  local wall src jxl
+  wall=$(sed -n 's/^# wallpaper = //p' "$1" | head -1)
+  wall=${wall/#\~/$HOME}
+  src=$(sed -n 's/^# source = //p' "$1" | head -1)
+  if [[ -z "$wall" || -f "$wall" || -z "$src" ]]; then return 0; fi
+  mkdir -p "$(dirname "$wall")"
+  case "$src" in
+    fedora-day | fedora-night)
+      jxl=$(printf '%s\n' /usr/share/backgrounds/f*/default/*-"${src#fedora-}".jxl | sort -V | tail -1)
+      if [[ ! -f "$jxl" ]]; then
+        echo "Fedora's wallpaper isn't installed: sudo dnf install f$(rpm -E %fedora)-backgrounds-base" >&2
+        return 1
+      fi
+      magick "$jxl" -resize 3840x3840 -quality 92 "$wall"
+      ;;
+    https://*)
+      echo "Downloading the wallpaper for this look..." >&2
+      if ! curl -fsSL --retry 2 -o "$wall.part" "$src"; then
+        rm -f "$wall.part"
+        echo "Could not download $src" >&2
+        return 1
+      fi
+      mv "$wall.part" "$wall"
+      ;;
+    *) echo "Unknown wallpaper source: $src" >&2; return 1 ;;
+  esac
+}
+
 list() {
   local f name current mark
   current=$(readlink "$active" 2>/dev/null || true)
@@ -31,6 +64,9 @@ list() {
 
 case "${1:-}" in
   "") list ;;
+  fetch)
+    f=$(preset_file "${2:-}") || { echo "No preset '${2:-}'." >&2; exit 1; }
+    fetch_wallpaper "$f" ;;
   off)
     rm -f "$active"
     if [[ -f "$previous" ]]; then
@@ -40,6 +76,7 @@ case "${1:-}" in
     echo "preset off" ;;
   *)
     f=$(preset_file "$1") || { echo "No preset '$1'. Presets:" >&2; list >&2; exit 1; }
+    fetch_wallpaper "$f"
     if [[ ! -L "$active" ]]; then
       mkdir -p "$(dirname "$previous")"
       noctalia msg wallpaper-get >"$previous"
