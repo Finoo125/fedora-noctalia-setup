@@ -80,8 +80,9 @@ main_dnf_packages() {
 # with GNOME Shell) installs hundreds of MB the Umbriel setup never uses. The fallbacks come from their own menu.
 FOREIGN_DESKTOP=(hyprland niri mangowm gnome-shell gnome-session mutter gdm kwin plasma-workspace sddm plasma-login-manager cinnamon
   xfce4-session mate-session-manager lightdm)
-# The fallback desktops bring their own shell, but never a login manager or yet another desktop.
-FOREIGN_TO_FALLBACK=(gdm sddm plasma-login-manager lightdm cinnamon xfce4-session mate-session-manager)
+# The fallback desktops bring their own shell, but never a login manager or yet another desktop. GDM is the one
+# exception: gnome-shell needs its library (gdm-libs is in the gdm package); setup_greeter keeps GDM switched off.
+FOREIGN_TO_FALLBACK=(sddm plasma-login-manager lightdm cinnamon xfce4-session mate-session-manager)
 
 # foreign_desktop_packages [NAME...]: stdin = `dnf install --assumeno` output -> the packages it would install
 # that are in NAME... (default: FOREIGN_DESKTOP).

@@ -22,7 +22,7 @@ CATALOG=(
   "desktop|mango|MangoWC|0|session|terra|mangowm xdg-desktop-portal-wlr xwayland-satellite|Light dwl-based compositor with tags, scroller layout and blur. From Terra."
 
   "fallback|plasma|KDE Plasma|1||noweak|plasma-workspace plasma-desktop kwin plasma-systemsettings kscreen plasma-nm plasma-pa powerdevil bluedevil polkit-kde xdg-desktop-portal-kde|Minimal Plasma session on the login screen, for when the compositor or a game misbehaves. Same colors and passwords."
-  "fallback|gnome|GNOME|0||noweak|gnome-shell gnome-session-wayland-session gnome-control-center xdg-desktop-portal-gnome|Minimal GNOME session on the login screen: the shell and its settings, no extra apps, no GDM."
+  "fallback|gnome|GNOME|0||noweak|gnome-shell gnome-session-wayland-session gnome-control-center xdg-desktop-portal-gnome|Minimal GNOME session on the login screen: the shell and its settings, no extra apps. GDM's library comes along; GDM stays off."
 
   "terminal|ghostty|Ghostty|1|terminal|terra|ghostty|Fast GPU terminal, tabs and splits, in the desktop's colors."
   "terminal|kitty|kitty|1|terminal|dnf|kitty|GPU terminal with images, tabs and layouts, in the desktop's colors."

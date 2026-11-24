@@ -73,7 +73,10 @@ setup_greeter() {
   write_root "$GREETER_DIR/greeter.toml" \
     "$(greeter_toml "$(greeter_session /usr/share/wayland-sessions)" "$wall" "$(keyboard_layout "$XKB_CONF")")"
   sudo chown greetd:greetd "$GREETER_DIR/greeter.toml"
-  sudo systemctl enable greetd
+  # GNOME (the fallback) needs GDM's library, which comes in the gdm package; GDM itself stays off and greetd stays
+  # the login manager, even if a package preset tried to take over display-manager.service.
+  if systemctl list-unit-files gdm.service >/dev/null 2>&1; then sudo systemctl disable gdm.service 2>/dev/null || true; fi
+  sudo systemctl enable --force greetd
   sudo systemctl set-default graphical.target
 }
 
