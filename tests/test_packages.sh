@@ -20,6 +20,7 @@ assert_true  "Umbriel is in the list"         grep -qx umbriel-nightly <<<"$all"
 assert_false "Hyprland is gone"               grep -qx hyprland <<<"$all"
 assert_false "no uwsm: Umbriel has its own systemd session" grep -qx uwsm <<<"$all"
 assert_true  "Qt apps get the kde platform theme" grep -qx plasma-integration <<<"$all"
+assert_true  "the Qt theme comes with Plasma, without weak deps" grep -qx plasma-integration < <(printf '%s\n' "${DNF_PLASMA[@]}")
 assert_false "no COPR left"                   grep -q 'COPR_REPO=' lib/packages.sh
 assert_true  "noctalia is in the list"        grep -qx noctalia <<<"$all"
 assert_true  "NVIDIA packages are checked too" grep -qx akmod-nvidia <<<"$all"

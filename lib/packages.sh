@@ -11,11 +11,9 @@ OLD_COPR_ID="copr:copr.fedorainfracloud.org:lionheartp:Hyprland"
 DNF_BASE=(dnf5-plugins flatpak pciutils jq)
 # The desktop: Umbriel (compositor, Terra nightly), Noctalia (shell, stable from Fedora), the Noctalia login screen.
 # Umbriel runs its own systemd session (umbriel-session.target), so no uwsm. xwayland-satellite runs X11 apps (Steam).
-# plasma-integration is the "kde" Qt platform theme: Qt and KDE apps read Noctalia's colors, Breeze, Papirus and the
-# fonts from kdeglobals, in Umbriel and in Plasma alike.
 DNF_DESKTOP=(umbriel-nightly xdg-desktop-portal-umbriel-nightly xwayland-satellite xdg-desktop-portal-gtk noctalia greetd noctalia-greeter
   pipewire pipewire-pulseaudio wireplumber bluez NetworkManager-wifi nm-connection-editor tuned-ppd upower
-  gnome-keyring gnome-keyring-pam gcr dconf ddcutil bolt polkit qt6-qtwayland plasma-integration plasma-breeze-qt6 adw-gtk3-theme papirus-icon-theme
+  gnome-keyring gnome-keyring-pam gcr dconf ddcutil bolt polkit qt6-qtwayland plasma-breeze-qt6 adw-gtk3-theme papirus-icon-theme
   google-noto-sans-fonts google-noto-color-emoji-fonts jetbrains-mono-fonts-all
   google-noto-sans-cjk-fonts liberation-fonts-all wl-clipboard grim slurp gpu-screen-recorder udiskie
   xdg-user-dirs xdg-utils xdg-terminal-exec libnotify playerctl brightnessctl)
@@ -41,9 +39,11 @@ DNF_NVIDIA=(akmod-nvidia xorg-x11-drv-nvidia-cuda xorg-x11-drv-nvidia-libs.i686 
 DNF_SECUREBOOT=(kmodtool akmods mokutil openssl)
 # Minimal KDE Plasma, always installed: a fallback session on the login screen for when Umbriel (a nightly build)
 # breaks or a game misbehaves in it. Installed without weak dependencies, so no Plasma Login Manager, KWallet or
-# kde-gtk-config (which rewrites the GTK settings).
+# kde-gtk-config (which rewrites the GTK settings). plasma-integration is the "kde" Qt platform theme: Qt and KDE apps
+# read Noctalia's colors, Breeze, Papirus and the fonts from kdeglobals, in Umbriel too. It needs KWin and
+# plasma-workspace, so it comes with Plasma, without weak dependencies, instead of in the main install.
 DNF_PLASMA=(plasma-workspace plasma-desktop kwin plasma-systemsettings kscreen plasma-nm plasma-pa powerdevil bluedevil
-  polkit-kde xdg-desktop-portal-kde)
+  polkit-kde xdg-desktop-portal-kde plasma-integration)
 # Replaced by the KDE apps; removed once when an older install is migrated (see remove_replaced_apps), unless
 # chosen in a menu (Thunar, VLC, Papers and GNOME Text Editor are choices now).
 # Also the Hyprland stack of a fedora-hyprland install (it came from the lionheartp COPR, which is removed).
