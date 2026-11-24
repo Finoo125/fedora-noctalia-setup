@@ -144,8 +144,6 @@ install_packages() {
   if driver_on amd-graphics && ! rpm -q "${DNF_AMD[@]}" >/dev/null 2>&1; then
     sudo dnf swap -y mesa-va-drivers "${DNF_AMD[@]}"
   fi
-  # Fedora's own wallpaper of this release, for the "fedora" look.
-  sudo dnf install -y "f$(rpm -E %fedora)-backgrounds-base" || warn "Fedora's wallpaper package isn't available."
   # Minimal Install leaves out the firmware for Wi-Fi, Bluetooth and audio chips (e.g. Intel iwlwifi).
   sudo dnf group install -y hardware-support
   # The Qt theme and the chosen fallback desktops, without weak dependencies (no login manager, no extra apps).

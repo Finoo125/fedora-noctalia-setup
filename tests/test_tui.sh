@@ -41,7 +41,7 @@ tui_pages
 tui_defaults
 assert_true  "default apps start ticked"           test -n "${TUI_ON[firefox]}"
 assert_false "other apps start unticked"           test -n "${TUI_ON[brave]}"
-assert_eq "21" "${#TUI_WIZARD[@]}" "welcome, 14 menus, drivers, extras, look, review, install, done"
+assert_eq "22" "${#TUI_WIZARD[@]}" "welcome, 14 menus, drivers, extras, look, keybindings, review, install, done"
 # shellcheck disable=SC2153 # set by tui_pages
 assert_eq "menu:desktop" "${TUI_PAGES[1]}" "the compositors come first"
 assert_eq "umbriel" "${TUI_DEFAULT[session]}" "Umbriel starts as the login session"
@@ -85,7 +85,7 @@ assert_eq "15" "$TUI_PAGE" "keys on an empty drivers page don't fail"
 hw_scan "8086 46a8 0300" "04f3 0c7e ff," "HP" ""
 
 TUI_ON[steam]="" TUI_ON[docker]=""
-TUI_PAGE=18; tui_plan
+TUI_PAGE=19; tui_plan
 # shellcheck disable=SC2153 # set by tui_plan
 assert_false "no Steam once it is unticked"         grep -qx steam < <(printf '%s\n' "${TUI_PKGS[@]}")
 assert_false "no Docker repo once Docker is unticked" grep -qx docker < <(printf '%s\n' "${TUI_REPOS[@]}")
@@ -112,4 +112,21 @@ TUI_STATE=("done" run skip) TUI_STEP=1 TUI_LOG_START=0
 tui_screen_install
 assert_true "the install shows dnf's counter"       grep -q "98 / 157" <<<"$(plain)"
 assert_eq "2" "$TUI_DONE_STEPS" "done and skipped steps count as finished"
+
+# The keybindings page: change one, refuse a taken key, reset.
+kb_load
+TUI_PAGE=18; TUI_SEL=0; TUI_TOP=0; TUI_KB_EDIT=""; tui_screen_keys
+assert_true "the keybindings page lists Close window" grep -q "Close window" <<<"$(plain)"
+KEY=enter KEY_CHAR=""; tui_keys_key
+for c in s u p e r + y; do KEY=other KEY_CHAR=$c; tui_keys_key; done
+KEY=enter KEY_CHAR=""; tui_keys_key
+assert_eq "Super+Y" "${KB_KEY[close]}" "typed keys are saved, in the table's spelling"
+KEY=enter KEY_CHAR=""; tui_keys_key
+for c in S u p e r + W; do KEY=other KEY_CHAR=$c; tui_keys_key; done
+KEY=enter KEY_CHAR=""; tui_keys_key
+assert_eq "Super+Y" "${KB_KEY[close]}" "a key another action uses is refused"
+assert_true "and the page says which one" grep -q "Browser" <<<"$TUI_KB_MSG"
+KEY=other KEY_CHAR=r; tui_keys_key
+assert_eq "Super+Q" "${KB_KEY[close]}" "R restores the default"
+assert_true "every action goes to the install steps" grep -q "^close=Super+Q;" <<<"$(tui_keybind_overrides)"
 finish

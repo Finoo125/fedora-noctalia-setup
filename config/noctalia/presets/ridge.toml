@@ -1,9 +1,9 @@
-# Preset "starfall": anime violet sky full of shooting stars. vibrant palette, floating rounded bar, soft panels, clock and system monitor bottom left.
-# wallpaper = ~/Pictures/Wallpapers/wallhaven-6le25w.png
-# source = https://w.wallhaven.cc/full/6l/wallhaven-6le25w.png
+# Preset "ridge": flat-art mountain ridges and a watch tower at sunset. wallpaper palette (faithful), floating rounded bar, soft panels, clock and system monitor bottom left.
+# wallpaper = ~/Pictures/Wallpapers/wallhaven-lyz3d2.png
+# source = https://w.wallhaven.cc/full/ly/wallhaven-lyz3d2.png
 [theme]
 source           = "wallpaper"
-wallpaper_scheme = "vibrant"
+wallpaper_scheme = "faithful"
 terminal_colors  = "standard"
 
 [bar.default]

@@ -1,6 +1,6 @@
-# Preset "contour": abstract violet contour lines on black. vibrant palette, no bar background (floating capsules only), glass panels.
-# wallpaper = ~/Pictures/Wallpapers/wallhaven-mlg7qm.png
-# source = https://w.wallhaven.cc/full/ml/wallhaven-mlg7qm.png
+# Preset "synthwave": neon mountains and a glowing waterfall under the stars. vibrant palette, no bar background (floating capsules only), glass panels.
+# wallpaper = ~/Pictures/Wallpapers/wallhaven-k82jl6.png
+# source = https://w.wallhaven.cc/full/k8/wallhaven-k82jl6.png
 [theme]
 source           = "wallpaper"
 wallpaper_scheme = "vibrant"

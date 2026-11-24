@@ -8,7 +8,7 @@ jobs:
       - name: Install tools
         run: sudo apt-get update && sudo apt-get install -y shellcheck
       - name: shellcheck
-        run: shellcheck install.sh bin/update bin/noctalia-preset lib/*.sh tests/*.sh config/umbriel/scripts/*.sh
+        run: shellcheck install.sh bin/* lib/*.sh tests/*.sh config/umbriel/scripts/*.sh
       - name: bash unit tests
         run: bash tests/run.sh
   packages:

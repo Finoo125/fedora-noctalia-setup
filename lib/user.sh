@@ -271,6 +271,7 @@ setup_user() {
     copy_once "$REPO_DIR/config/$item" "$HOME/.config/$item"
   done
   setup_compositors "$HOME/.config"
+  write_keybinds "$HOME/.config"
   # Noctalia's btop template only switches the theme in an existing btop.conf; btop fills in the rest itself.
   write_once "$HOME/.config/btop/btop.conf" 'color_theme = "noctalia"'
   download_wallpapers "$list" "$WALL_DIR"
@@ -291,6 +292,7 @@ setup_user() {
   mkdir -p "$HOME/.local/bin"
   ln -sfn "$REPO_DIR/bin/update" "$HOME/.local/bin/update"
   ln -sfn "$REPO_DIR/bin/noctalia-preset" "$HOME/.local/bin/noctalia-preset"
+  ln -sfn "$REPO_DIR/bin/keybinds" "$HOME/.local/bin/keybinds"
   # A look that no longer exists (renamed or removed in an update) would leave a broken link in Noctalia's config.
   if [[ -L "$HOME/.config/noctalia/30-preset.toml" && ! -e "$HOME/.config/noctalia/30-preset.toml" ]]; then
     rm -f "$HOME/.config/noctalia/30-preset.toml"

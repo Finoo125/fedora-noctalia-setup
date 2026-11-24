@@ -66,13 +66,12 @@ assert_true "Umbriel sets Plasma's menu for Dolphin" grep -qx 'XDG_MENU_PREFIX =
 assert_true "Noctalia starts with Umbriel" grep -qx '  "noctalia",' "$defaults"
 assert_false "no Hyprland tools in the Umbriel defaults" grep -qi 'hypr' "$defaults"
 assert_false "keybinds name no app directly" grep -qE 'spawn (ghostty|firefox|luciole|kate)' "$defaults"
-assert_true "Super+Return opens the default terminal" grep -qF '"Mod+Return" = { action = "spawn xdg-terminal-exec"' "$defaults"
+assert_true "the keybindings table opens the default terminal" grep -q '^terminal|.*|Super+Return|spawn|xdg-terminal-exec|' config/keybinds.tsv
 assert_true "Noctalia colors Umbriel" grep -qF '"umbriel"' config/noctalia/00-fedora-noctalia.toml
 for t in hyprland niri mango umbriel; do assert_true "Noctalia colors $t" grep -qF "\"$t\"" config/noctalia/00-fedora-noctalia.toml; done
-for f in config/niri/defaults.kdl config/mango/defaults.conf config/hypr/binds.lua; do
-  assert_true "$f opens the default terminal" grep -q 'xdg-terminal-exec' "$f"
-  assert_true "$f opens the default browser" grep -q 'open-default.*browser' "$f"
-  assert_true "$f starts nothing by its name" bash -c "! grep -qE '(spawn|exec_cmd|run)[ (\"]*(ghostty|firefox|luciole|kate)' $f"
+for f in config/niri/defaults.kdl config/mango/defaults.conf config/hypr/binds.lua config/umbriel/defaults.toml; do
+  assert_true "$f takes the standard keybindings from the generated file" grep -q 'keybinds\.' "$f"
+  assert_false "$f starts no app by its name" grep -qE '(spawn|exec_cmd|run)[ (\"]*(ghostty|firefox|luciole|kate)' "$f"
 done
 assert_true "niri starts Noctalia" grep -qx 'spawn-at-startup "noctalia"' config/niri/defaults.kdl
 assert_true "MangoWC starts Noctalia" grep -qx 'exec_once=noctalia' config/mango/defaults.conf

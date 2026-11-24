@@ -1,0 +1,64 @@
+# The standard keybindings, the same in every compositor. Change them with `keybinds set ACTION KEYS` or on the
+# installer's Keybindings page; your changes go to ~/.config/fedora-noctalia-setup/keybinds.conf.
+# id|group|label|default keys|kind|argument|flags
+# kind: spawn (a command), noctalia (a `noctalia msg` command), wm (a window action, translated per compositor).
+# flags: repeat (held keys repeat), locked (works on the lock screen).
+close|Windows|Close window|Super+Q|wm|close|
+kill|Windows|Force-close window|Super+Escape|wm|kill|
+float|Windows|Float or tile window|Super+Alt+Space|wm|float|
+maximize|Windows|Maximize window|Super+D|wm|maximize|
+fullscreen|Windows|Fullscreen|Super+F|wm|fullscreen|
+focus-left|Windows|Focus left|Super+Left|wm|focus-left|repeat
+focus-right|Windows|Focus right|Super+Right|wm|focus-right|repeat
+focus-up|Windows|Focus up|Super+Up|wm|focus-up|repeat
+focus-down|Windows|Focus down|Super+Down|wm|focus-down|repeat
+move-left|Windows|Move window left|Super+Shift+Left|wm|move-left|repeat
+move-right|Windows|Move window right|Super+Shift+Right|wm|move-right|repeat
+move-up|Windows|Move window up|Super+Shift+Up|wm|move-up|repeat
+move-down|Windows|Move window down|Super+Shift+Down|wm|move-down|repeat
+cycle|Windows|Next window|Alt+Tab|wm|cycle|repeat
+switcher|Windows|Window switcher|Super+Tab|noctalia|window-switcher|
+overview|Windows|Overview|Super+O|wm|overview|
+scratchpad|Windows|Scratchpad|Super+S|wm|scratchpad|
+desk-1|Desks|Desk 1|Super+1|wm|desk-1|
+desk-2|Desks|Desk 2|Super+2|wm|desk-2|
+desk-3|Desks|Desk 3|Super+3|wm|desk-3|
+desk-4|Desks|Desk 4|Super+4|wm|desk-4|
+desk-5|Desks|Desk 5|Super+5|wm|desk-5|
+to-desk-1|Desks|Window to desk 1|Super+Shift+1|wm|to-desk-1|
+to-desk-2|Desks|Window to desk 2|Super+Shift+2|wm|to-desk-2|
+to-desk-3|Desks|Window to desk 3|Super+Shift+3|wm|to-desk-3|
+to-desk-4|Desks|Window to desk 4|Super+Shift+4|wm|to-desk-4|
+to-desk-5|Desks|Window to desk 5|Super+Shift+5|wm|to-desk-5|
+desk-prev|Desks|Previous desk|Super+Ctrl+Left|wm|desk-prev|
+desk-next|Desks|Next desk|Super+Ctrl+Right|wm|desk-next|
+carry-prev|Desks|Take window to previous desk|Super+Ctrl+Shift+Left|wm|carry-prev|
+carry-next|Desks|Take window to next desk|Super+Ctrl+Shift+Right|wm|carry-next|
+terminal|Apps|Terminal|Super+Return|spawn|xdg-terminal-exec|
+files|Apps|File manager|Super+E|spawn|open-default files|
+browser|Apps|Browser|Super+W|spawn|open-default browser|
+editor|Apps|Text editor|Super+T|spawn|open-default editor|
+calculator|Apps|Calculator|Super+C|spawn|kcalc|
+calculator-key|Apps|Calculator (calculator key)|XF86Calculator|spawn|kcalc|
+monitor|Apps|System monitor|Ctrl+Shift+Escape|spawn|xdg-terminal-exec btop|
+launcher|Noctalia|Launcher|Super+Space|noctalia|panel-toggle launcher|
+emoji|Noctalia|Emoji picker|Super+Period|noctalia|panel-toggle launcher /emo|
+control-center|Noctalia|Control center|Super+X|noctalia|panel-toggle control-center|
+settings|Noctalia|Settings|Super+Z|noctalia|settings-toggle|
+notifications|Noctalia|Notifications|Super+A|noctalia|panel-toggle control-center notifications|
+clipboard|Noctalia|Clipboard history|Super+V|noctalia|panel-toggle clipboard|
+lock|Noctalia|Lock screen|Super+L|noctalia|session lock|
+session|Noctalia|Session menu|Super+Alt+C|noctalia|panel-toggle session|
+wallpaper|Noctalia|Wallpaper picker|Super+Shift+W|noctalia|panel-toggle wallpaper|
+screenshot|Noctalia|Screenshot of a region|Print|noctalia|screenshot-region|
+screenshot-full|Noctalia|Screenshot of the screen|Super+Print|noctalia|screenshot-fullscreen|
+record|Noctalia|Start/stop screen recording|Super+Shift+S|noctalia|plugin noctalia/screen_recorder:service all toggle|
+volume-up|Hardware|Volume up|XF86AudioRaiseVolume|noctalia|volume-up|repeat locked
+volume-down|Hardware|Volume down|XF86AudioLowerVolume|noctalia|volume-down|repeat locked
+mute|Hardware|Mute|XF86AudioMute|noctalia|volume-mute|locked
+mic-mute|Hardware|Mute microphone|XF86AudioMicMute|noctalia|mic-mute|locked
+play|Hardware|Play/pause|XF86AudioPlay|noctalia|media toggle|locked
+next|Hardware|Next track|XF86AudioNext|noctalia|media next|locked
+previous|Hardware|Previous track|XF86AudioPrev|noctalia|media previous|locked
+brightness-up|Hardware|Brightness up|XF86MonBrightnessUp|noctalia|brightness-up|repeat locked
+brightness-down|Hardware|Brightness down|XF86MonBrightnessDown|noctalia|brightness-down|repeat locked

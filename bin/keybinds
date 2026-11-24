@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# Your keybindings, the same in every compositor of fedora-noctalia-setup.
+#   keybinds                    list every action and its keys (* = changed by you)
+#   keybinds set ACTION KEYS    e.g. keybinds set browser Super+B   (modifiers: Super Ctrl Alt Shift)
+#   keybinds reset [ACTION]     back to the default, for one action or all
+# Changes are saved in ~/.config/fedora-noctalia-setup/keybinds.conf and apply at once.
+set -euo pipefail
+# shellcheck source=lib/common.sh
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../lib/common.sh"
+# shellcheck source=lib/catalog.sh
+source "$REPO_DIR/lib/catalog.sh"
+# shellcheck source=lib/keybinds.sh
+source "$REPO_DIR/lib/keybinds.sh"
+load_choices
+kb_load
+
+# apply: save, rewrite every compositor's file; niri, MangoWC and Umbriel reload by themselves, Hyprland is told.
+apply() {
+  save_keybinds
+  write_keybinds "${XDG_CONFIG_HOME:-$HOME/.config}"
+  if pgrep -x Hyprland >/dev/null 2>&1; then hyprctl reload >/dev/null || true; fi
+}
+
+case "${1:-}" in
+  "")
+    group=""
+    for id in "${KB_IDS[@]}"; do
+      if [[ "${KB_GROUP[$id]}" != "$group" ]]; then group=${KB_GROUP[$id]}; printf '\n%s\n' "$group"; fi
+      mark=" "
+      [[ "${KB_KEY[$id]}" != "${KB_DEFAULT[$id]}" ]] && mark="*"
+      printf '%s %-22s %-26s %s\n' "$mark" "${KB_KEY[$id]}" "$id" "${KB_LABEL[$id]}"
+    done
+    ;;
+  set)
+    id=${2:-} keys=${3:-}
+    [[ -n "${KB_LABEL[$id]:-}" ]] || die "No action '$id'. \`keybinds\` lists them."
+    keys=$(kb_normalize "$keys") || die "'${3:-}' isn't a key combination. Example: Super+Shift+B (modifiers: Super Ctrl Alt Shift)."
+    other=$(kb_conflict "$id" "$keys")
+    [[ -z "$other" ]] || die "$keys is already '${KB_LABEL[$other]}' ($other). Change that one first."
+    KB_KEY[$id]=$keys
+    apply
+    echo "${KB_LABEL[$id]}: $keys"
+    ;;
+  reset)
+    if [[ -n "${2:-}" ]]; then
+      [[ -n "${KB_LABEL[$2]:-}" ]] || die "No action '$2'."
+      other=$(kb_conflict "$2" "${KB_DEFAULT[$2]}")
+      [[ -z "$other" ]] || die "${KB_DEFAULT[$2]} is now '${KB_LABEL[$other]}' ($other). Change that one first."
+      KB_KEY[$2]=${KB_DEFAULT[$2]}
+    else
+      for id in "${KB_IDS[@]}"; do KB_KEY[$id]=${KB_DEFAULT[$id]}; done
+    fi
+    apply
+    echo "reset"
+    ;;
+  -h | --help) sed -n '2,6s/^# \?//p' "$0" ;;
+  *) die "Unknown command '$1'. See keybinds --help." ;;
+esac

@@ -135,9 +135,18 @@ tui_sidebar() {
 
 # tui_wizard_sidebar CURRENT: the six wizard steps, CURRENT (0-5) highlighted.
 tui_wizard_sidebar() {
-  local i
+  local i first=0 last avail=$((TUI_R1 - TUI_R0 + 1)) n=${#TUI_WIZARD[@]}
   local -a lines=()
-  for i in "${!TUI_WIZARD[@]}"; do
+  # More steps than rows (a small window): a slice around the current step, with markers for the rest.
+  last=$((n - 1))
+  if ((n > avail)); then
+    first=$(($1 - (avail - 2) / 2))
+    ((first < 0)) && first=0
+    ((first > n - (avail - 2))) && first=$((n - (avail - 2)))
+    last=$((first + avail - 3))
+    if ((first > 0)); then lines+=("muted|$G_UP $first more"); else lines+=("muted|"); fi
+  fi
+  for ((i = first; i <= last; i++)); do
     if ((i < $1)); then
       lines+=("green|$G_DONE ${TUI_WIZARD[i]}")
     elif ((i == $1)); then
@@ -146,6 +155,7 @@ tui_wizard_sidebar() {
       lines+=("muted|$G_TODO ${TUI_WIZARD[i]}")
     fi
   done
+  if ((n > avail && last < n - 1)); then lines+=("muted|$G_DOWN $((n - 1 - last)) more"); fi
   tui_sidebar "${lines[@]}"
 }
 
@@ -227,7 +237,7 @@ tui_bar() {
 # tui_read_key [TIMEOUT]: KEY = up down left right home end pgup pgdn enter space tab back esc q other, or "" on timeout.
 tui_read_key() {
   local k="" rest=""
-  KEY=""
+  KEY="" KEY_CHAR=""
   if ! IFS= read -rsn1 -t "${1:-3600}" k; then return 0; fi
   case "$k" in
     "$E")
@@ -243,6 +253,7 @@ tui_read_key() {
       esac
       ;;
     '') KEY=enter ;;
+    [[:print:]]) KEY_CHAR=$k ;;&
     ' ') KEY=space ;;
     $'\t') KEY=tab ;;
     $'\x7f' | $'\b') KEY=back ;;
@@ -250,6 +261,7 @@ tui_read_key() {
     d | D) KEY=d ;;
     k) KEY=up ;;
     j) KEY=down ;;
+    [[:print:]]) [[ -n "$KEY" ]] || KEY=other ;;
     *) KEY=other ;;
   esac
 }
@@ -301,8 +313,8 @@ tui_pages() {
     TUI_PAGES+=("menu:${menu%%|*}")
     TUI_WIZARD+=("${menu#*|}")
   done
-  TUI_PAGES+=(drivers extras look review)
-  TUI_WIZARD+=(Drivers Extras Look Review Install Done)
+  TUI_PAGES+=(drivers extras look keybinds review)
+  TUI_WIZARD+=(Drivers Extras Look Keybindings Review Install Done)
 }
 
 # tui_step INDEX -> "step N of M" for the top bar.
@@ -664,6 +676,9 @@ tui_screen_review() {
   for role in terminal browser files editor; do tui_text fg "$role: $(tui_default_label "$role")"; done
   if [[ "$PRESET_CHOICE" == off ]]; then tui_text fg "look: plain Ayu"; else tui_text fg "look: $PRESET_CHOICE"; fi
   tui_text fg "login: $(tui_default_label session)"
+  local changed=0 kid
+  for kid in "${KB_IDS[@]}"; do [[ "${KB_KEY[$kid]}" != "${KB_DEFAULT[$kid]}" ]] && changed=$((changed + 1)); done
+  tui_text fg "keys: $changed changed"
   if [[ -n "$TUI_MIGRATE" ]]; then tui_text muted "fedora-hyprland moved over"; fi
   col=$((col + bw + 2))
   tui_box "$top" "$col" "$bw" "$bh" "red,,b" "- Removes"
@@ -804,6 +819,96 @@ tui_screen_done() {
   tui_footer "${LOG_FILE/#$HOME/\~}" "Tab|next button" "Enter|press"
 }
 
+# tui_screen_keys: the keybindings, the same in every compositor. Enter changes one, R restores its default.
+tui_screen_keys() {
+  local i id r style top=$((TUI_R0 + 2)) bottom=$((TUI_R1 - 2)) rows mark
+  tui_frame_begin
+  tui_topbar "$(tui_step "$TUI_PAGE")"
+  tui_wizard_sidebar "$TUI_PAGE"
+  tui_put "$TUI_R0" "$TUI_C0" "$TUI_CW" muted "Keybindings for every compositor. Later: keybinds command."
+  rows=$((bottom - top + 1))
+  ((TUI_SEL < TUI_TOP)) && TUI_TOP=$TUI_SEL
+  ((TUI_SEL >= TUI_TOP + rows)) && TUI_TOP=$((TUI_SEL - rows + 1))
+  r=$top
+  for ((i = TUI_TOP; i < ${#KB_IDS[@]} && r <= bottom; i++)); do
+    id=${KB_IDS[i]}
+    mark=" "
+    [[ "${KB_KEY[$id]}" != "${KB_DEFAULT[$id]}" ]] && mark="*"
+    if ((i == TUI_SEL)); then style="page,accent,b"; else style="fg"; fi
+    # Narrow windows leave out the group column, so the keys stay readable.
+    if ((TUI_CW >= 70)); then
+      tui_put "$r" "$TUI_C0" "$TUI_CW" "$style" "$(printf '%s %-12s %-28s %s' "$mark" "${KB_GROUP[$id]}" "${KB_LABEL[$id]}" "${KB_KEY[$id]}")"
+    else
+      tui_put "$r" "$TUI_C0" "$TUI_CW" "$style" "$(printf '%s %-24s %s' "$mark" "${KB_LABEL[$id]:0:24}" "${KB_KEY[$id]}")"
+    fi
+    r=$((r + 1))
+  done
+  if ((TUI_TOP > 0)); then tui_put $((top - 1)) $((TUI_C0 + TUI_CW - 6)) 6 muted "$G_UP more"; fi
+  if ((TUI_TOP + rows < ${#KB_IDS[@]})); then tui_put $((bottom + 1)) $((TUI_C0 + TUI_CW - 6)) 6 muted "$G_DOWN more"; fi
+  id=${KB_IDS[TUI_SEL]}
+  if [[ -n "${TUI_KB_EDIT:-}" ]]; then
+    tui_put "$TUI_R1" "$TUI_C0" "$TUI_CW" "accent,,b" "New keys for ${KB_LABEL[$id]}: ${TUI_KB_INPUT}_"
+    tui_footer "" "e.g.|Super+Shift+B" "Enter|save" "Esc|cancel"
+  else
+    tui_put "$TUI_R1" "$TUI_C0" "$TUI_CW" "${TUI_KB_MSG_STYLE:-muted}" "${TUI_KB_MSG:-* = changed by you. Modifiers: Super, Ctrl, Alt, Shift.}"
+    tui_footer "" "$G_UP$G_DOWN|move" "Enter|change" "R|default" "Backspace|back" "Esc|quit"
+  fi
+}
+
+# tui_keys_key: a key on the keybindings page.
+tui_keys_key() {
+  local id=${KB_IDS[TUI_SEL]} keys other
+  if [[ -n "${TUI_KB_EDIT:-}" ]]; then
+    case "$KEY" in
+      esc) TUI_KB_EDIT="" TUI_KB_MSG="" ;;
+      back) TUI_KB_INPUT=${TUI_KB_INPUT%?} ;;
+      enter)
+        TUI_KB_EDIT=""
+        if ! keys=$(kb_normalize "$TUI_KB_INPUT"); then
+          TUI_KB_MSG="'$TUI_KB_INPUT' isn't a key combination, e.g. Super+Shift+B." TUI_KB_MSG_STYLE="red,,b"
+        elif other=$(kb_conflict "$id" "$keys") && [[ -n "$other" ]]; then
+          TUI_KB_MSG="$keys is already ${KB_LABEL[$other]}; change that one first." TUI_KB_MSG_STYLE="red,,b"
+        else
+          # shellcheck disable=SC2004 # KB_KEY is associative (lib/keybinds.sh)
+          KB_KEY[$id]=$keys TUI_KB_MSG="${KB_LABEL[$id]}: $keys" TUI_KB_MSG_STYLE="green,,b"
+        fi
+        ;;
+      *) if [[ -n "$KEY_CHAR" ]]; then TUI_KB_INPUT+=$KEY_CHAR; fi ;;
+    esac
+    return 0
+  fi
+  case "$KEY_CHAR" in
+    r | R)
+      other=$(kb_conflict "$id" "${KB_DEFAULT[$id]}")
+      if [[ -n "$other" ]]; then
+        TUI_KB_MSG="${KB_DEFAULT[$id]} is now ${KB_LABEL[$other]}; change that one first." TUI_KB_MSG_STYLE="red,,b"
+      else
+        # shellcheck disable=SC2004 # KB_KEY is associative (lib/keybinds.sh)
+        KB_KEY[$id]=${KB_DEFAULT[$id]} TUI_KB_MSG="${KB_LABEL[$id]}: ${KB_DEFAULT[$id]}" TUI_KB_MSG_STYLE="muted"
+      fi
+      return 0
+      ;;
+  esac
+  case "$KEY" in
+    up) TUI_SEL=$((TUI_SEL > 0 ? TUI_SEL - 1 : 0)) ;;
+    down | tab) TUI_SEL=$((TUI_SEL < ${#KB_IDS[@]} - 1 ? TUI_SEL + 1 : TUI_SEL)) ;;
+    pgup) TUI_SEL=$((TUI_SEL > 10 ? TUI_SEL - 10 : 0)) ;;
+    pgdn) TUI_SEL=$((TUI_SEL + 10 < ${#KB_IDS[@]} ? TUI_SEL + 10 : ${#KB_IDS[@]} - 1)) ;;
+    home) TUI_SEL=0 ;;
+    end) TUI_SEL=$((${#KB_IDS[@]} - 1)) ;;
+    enter | space) TUI_KB_EDIT=1 TUI_KB_INPUT="" TUI_KB_MSG="" ;;
+    right) tui_goto $((TUI_PAGE + 1)) ;;
+    back | left) tui_goto $((TUI_PAGE - 1)) ;;
+  esac
+}
+
+# tui_keybind_overrides -> every action's keys as "id=Keys;...", for write_keybinds.
+tui_keybind_overrides() {
+  local id out=""
+  for id in "${KB_IDS[@]}"; do out+="$id=${KB_KEY[$id]};"; done
+  echo "${out%;}"
+}
+
 # --- The controller.
 
 # tui_draw SCREEN [ARGS]: one frame, or the "too small" notice.
@@ -819,6 +924,7 @@ tui_screen_page() {
     welcome) tui_screen_welcome ;;
     menu:* | drivers | extras) tui_screen_list ;;
     look) tui_screen_look ;;
+    keybinds) tui_screen_keys ;;
     review) tui_screen_review ;;
   esac
 }
@@ -833,6 +939,7 @@ tui_goto() {
       for i in "${!TUI_PRESETS[@]}"; do [[ "${TUI_PRESETS[i]}" == "$PRESET_CHOICE" ]] && TUI_SEL=$i; done
       ;;
     review) tui_plan ;;
+    keybinds) TUI_KB_EDIT="" TUI_KB_MSG="" ;;
   esac
 }
 
@@ -906,6 +1013,11 @@ tui_wizard() {
       esac
       continue
     fi
+    # On the keybindings page Esc and letters belong to the edit field while it is open.
+    if [[ "${TUI_PAGES[TUI_PAGE]}" == keybinds ]] && { [[ -n "${TUI_KB_EDIT:-}" ]] || [[ "$KEY_CHAR" == [rR] ]]; }; then
+      tui_keys_key
+      continue
+    fi
     if [[ "$KEY" == esc || "$KEY" == q ]]; then return 1; fi
     case "${TUI_PAGES[TUI_PAGE]}" in
       welcome)
@@ -915,6 +1027,7 @@ tui_wizard() {
         esac
         ;;
       menu:* | drivers | extras) tui_list_key ;;
+      keybinds) tui_keys_key ;;
       look)
         case "$KEY" in
           up) TUI_SEL=$((TUI_SEL > 0 ? TUI_SEL - 1 : 0)) ;;
@@ -947,7 +1060,9 @@ tui_answers() {
   local key
   tui_sync
   export ASSUME=yes DEFER_FINGERPRINT=1 APPLY_DEFAULTS=1 PRESET_CHOICE SOFTWARE_ITEMS
-  export DEFAULT_TERMINAL DEFAULT_BROWSER DEFAULT_FILES DEFAULT_EDITOR DRIVER_ITEMS
+  export DEFAULT_TERMINAL DEFAULT_BROWSER DEFAULT_FILES DEFAULT_EDITOR DEFAULT_SESSION DRIVER_ITEMS
+  KEYBIND_OVERRIDES=$(tui_keybind_overrides)
+  export KEYBIND_OVERRIDES
   for key in home-snapshots grub-btrfs; do
     if [[ "${TUI_OFF_WHY[$key]:-}" == "already on" ]]; then continue; fi
     if [[ -n "${TUI_ON[$key]:-}" ]]; then export "ANSWER_${key//-/_}=yes"; else export "ANSWER_${key//-/_}=no"; fi
@@ -1008,6 +1123,7 @@ tui_finish() {
 tui_main() {
   preflight_checks
   tui_pages
+  kb_load
   tui_colors "$(tui_color_mode "${TERM:-}" "${COLORTERM:-}")"
   tui_glyphs "${TERM:-}"
   tui_detect

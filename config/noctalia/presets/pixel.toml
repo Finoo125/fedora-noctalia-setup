@@ -1,9 +1,9 @@
-# Preset "valley": anime alpine valley with sun rays through the forest. wallpaper palette (faithful), glass panels, capsule bar, time at the top, calendar and music on the right.
-# wallpaper = ~/Pictures/Wallpapers/wallhaven-d8k5rm.jpg
-# source = https://w.wallhaven.cc/full/d8/wallhaven-d8k5rm.jpg
+# Preset "pixel": pixel-art meadow under a wide summer sky. vibrant palette, glass panels, capsule bar, time at the top, calendar and music on the right.
+# wallpaper = ~/Pictures/Wallpapers/wallhaven-213edy.png
+# source = https://w.wallhaven.cc/full/21/wallhaven-213edy.png
 [theme]
 source           = "wallpaper"
-wallpaper_scheme = "faithful"
+wallpaper_scheme = "vibrant"
 terminal_colors  = "standard"
 
 [bar.default]

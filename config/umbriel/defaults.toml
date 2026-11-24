@@ -8,6 +8,10 @@
 #   noctalia.toml    border and overview colors from Noctalia's umbriel template
 #   scripts/         links to this repo's desks.sh (five linked desks) and dock.sh (laptop panel off when docked)
 
+# The standard keybindings (written from config/keybinds.tsv and your changes; see `keybinds`).
+[include.optional]
+files = ["~/.config/umbriel/keybinds.toml"]
+
 # ==============================================================================
 # Session
 
@@ -99,82 +103,13 @@ size = 32
 # Super+drag moves a window and Super+right-drag resizes it; both are built in.
 
 [keybinds]
-# Windows
-"Mod+Q" = { action = "window-close", repeat = false }
-"Mod+Escape" = { action = "window-kill", repeat = false }
-"Mod+Alt+Space" = { action = "window-toggle-floating", repeat = false }
-"Mod+D" = { action = "window-toggle-maximize", repeat = false }
-"Mod+F" = { action = "window-toggle-fullscreen", repeat = false }
+# The standard keybindings come from ~/.config/umbriel/keybinds.toml (written from config/keybinds.tsv and your
+# changes; see `keybinds`). These are Umbriel's own extras.
 "Mod+J" = "window-swap-left"   # from the stack this swaps with the master window
-"Mod+Left" = "window-focus-or-output-left"
-"Mod+Right" = "window-focus-or-output-right"
-"Mod+Up" = "window-focus-up"
-"Mod+Down" = "window-focus-down"
-"Mod+Shift+Left" = "window-move-or-output-left"
-"Mod+Shift+Right" = "window-move-or-output-right"
-"Mod+Shift+Up" = "window-move-up"
-"Mod+Shift+Down" = "window-move-down"
-"Alt+Tab" = "window-focus-next"
-"Mod+Tab" = { action = "spawn noctalia msg window-switcher", repeat = false }
 "Mod+Alt+1" = "output-focus-left"    # portrait monitor
 "Mod+Alt+2" = "output-focus-right"   # main monitor
-"Mod+S" = "scratchpad-toggle"
 "Mod+Ctrl+S" = { action = "window-toggle-scratchpad", repeat = false }
-# Umbriel extras
-"Mod+O" = { action = "overview-toggle", repeat = false }
 "Mod+Shift+Escape" = { action = "shortcuts-inhibit-toggle", allow_when_inhibited = true, repeat = false }
-
-# Apps: the default terminal, browser, file manager and editor chosen in the installer (or later with xdg-mime).
-"Mod+Return" = { action = "spawn xdg-terminal-exec", repeat = false }
-"Mod+E" = { action = "spawn open-default files", repeat = false }
-"Mod+W" = { action = "spawn open-default browser", repeat = false }
-"Mod+T" = { action = "spawn open-default editor", repeat = false }
-"Mod+C" = { action = "spawn kcalc", repeat = false }
-"XF86Calculator" = { action = "spawn kcalc", repeat = false }
-"Ctrl+Shift+Escape" = { action = "spawn xdg-terminal-exec btop", repeat = false }
-
-# Noctalia
-"Mod+Space" = { action = "spawn noctalia msg panel-toggle launcher", repeat = false }
-"Mod+Period" = { action = "spawn noctalia msg panel-toggle launcher /emo", repeat = false }
-"Mod+X" = { action = "spawn noctalia msg panel-toggle control-center", repeat = false }
-"Mod+Z" = { action = "spawn noctalia msg settings-toggle", repeat = false }
-"Mod+A" = { action = "spawn noctalia msg panel-toggle control-center notifications", repeat = false }
-"Mod+V" = { action = "spawn noctalia msg panel-toggle clipboard", repeat = false }
-"Mod+L" = { action = "spawn noctalia msg session lock", repeat = false }
-"Mod+Alt+C" = { action = "spawn noctalia msg panel-toggle session", repeat = false }
-"Mod+Shift+W" = { action = "spawn noctalia msg panel-toggle wallpaper", repeat = false }
-"Print" = { action = "spawn noctalia msg screenshot-region", repeat = false }
-"Mod+Print" = { action = "spawn noctalia msg screenshot-fullscreen", repeat = false }
-"Mod+Shift+S" = { action = "spawn noctalia msg plugin noctalia/screen_recorder:service all toggle", repeat = false }
-
-# Hardware keys (also work on the lock screen)
-"XF86AudioRaiseVolume" = { action = "spawn noctalia msg volume-up", allow_when_locked = true }
-"XF86AudioLowerVolume" = { action = "spawn noctalia msg volume-down", allow_when_locked = true }
-"XF86AudioMute" = { action = "spawn noctalia msg volume-mute", allow_when_locked = true, repeat = false }
-"XF86AudioMicMute" = { action = "spawn noctalia msg mic-mute", allow_when_locked = true, repeat = false }
-"XF86AudioPlay" = { action = "spawn noctalia msg media toggle", allow_when_locked = true, repeat = false }
-"XF86AudioPause" = { action = "spawn noctalia msg media toggle", allow_when_locked = true, repeat = false }
-"XF86AudioNext" = { action = "spawn noctalia msg media next", allow_when_locked = true, repeat = false }
-"XF86AudioPrev" = { action = "spawn noctalia msg media previous", allow_when_locked = true, repeat = false }
-"XF86MonBrightnessUp" = { action = "spawn noctalia msg brightness-up", allow_when_locked = true }
-"XF86MonBrightnessDown" = { action = "spawn noctalia msg brightness-down", allow_when_locked = true }
-
-# Five linked desks: Super+N shows workspace N on every monitor,
-# Super+Shift+N moves the window to desk N on its monitor, Ctrl+Super+Left/Right steps, with Shift the window comes along.
-"Mod+1" = { action = "spawn ~/.config/umbriel/scripts/desks.sh focus 1", repeat = false }
-"Mod+2" = { action = "spawn ~/.config/umbriel/scripts/desks.sh focus 2", repeat = false }
-"Mod+3" = { action = "spawn ~/.config/umbriel/scripts/desks.sh focus 3", repeat = false }
-"Mod+4" = { action = "spawn ~/.config/umbriel/scripts/desks.sh focus 4", repeat = false }
-"Mod+5" = { action = "spawn ~/.config/umbriel/scripts/desks.sh focus 5", repeat = false }
-"Mod+Shift+1" = { action = "window-move-to-workspace-silent 1", repeat = false }
-"Mod+Shift+2" = { action = "window-move-to-workspace-silent 2", repeat = false }
-"Mod+Shift+3" = { action = "window-move-to-workspace-silent 3", repeat = false }
-"Mod+Shift+4" = { action = "window-move-to-workspace-silent 4", repeat = false }
-"Mod+Shift+5" = { action = "window-move-to-workspace-silent 5", repeat = false }
-"Ctrl+Mod+Left" = { action = "spawn ~/.config/umbriel/scripts/desks.sh step -1", repeat = false }
-"Ctrl+Mod+Right" = { action = "spawn ~/.config/umbriel/scripts/desks.sh step 1", repeat = false }
-"Ctrl+Mod+Shift+Left" = { action = "spawn ~/.config/umbriel/scripts/desks.sh carry -1", repeat = false }
-"Ctrl+Mod+Shift+Right" = { action = "spawn ~/.config/umbriel/scripts/desks.sh carry 1", repeat = false }
 
 # ==============================================================================
 # Window rules

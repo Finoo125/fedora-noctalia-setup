@@ -1,6 +1,5 @@
--- Five linked desks: Super+N shows workspace N on the main monitor and 10+N on the portrait monitor.
--- Super+Shift+N moves the focused window to desk N on the monitor it's on.
--- Ctrl+Super+Left/Right steps to the previous/next desk, like Windows; with Shift the window comes along. Every session starts on desk 1.
+-- Five linked desks: desk N is workspace N on the main monitor and 10+N on the portrait monitor. The keys are in
+-- keybinds.lua (Super+N, Super+Shift+N, Ctrl+Super+Left/Right). Every session starts on desk 1.
 local M = { COUNT = 5 }
 local MAIN = "desc:HP Inc. HP X27i"
 local PORTRAIT = "desc:HP Inc. HP E27q G5"
@@ -60,21 +59,20 @@ end
 for n = 1, M.COUNT do
   hl.workspace_rule({ workspace = tostring(n), monitor = MAIN, default = (n == 1) })
   hl.workspace_rule({ workspace = tostring(10 + n), monitor = PORTRAIT, default = (n == 1), layout_opts = { orientation = "top" } })
-  local key = "code:" .. (9 + n) -- digit keys by keycode (1 = code:10), works on QWERTZ and AZERTY
-  hl.bind("SUPER + " .. key, function() focus_desk(n) end)
-  hl.bind("SUPER + SHIFT + " .. key, function()
-    hl.dispatch(hl.dsp.window.move({ workspace = tostring(M.move_target(active_ws_id(), n)), follow = false }))
-  end)
 end
-hl.bind("CONTROL + SUPER + Left", function() focus_desk(M.step(active_ws_id(), -1)) end)
-hl.bind("CONTROL + SUPER + Right", function() focus_desk(M.step(active_ws_id(), 1)) end)
-for key, delta in pairs({ Left = -1, Right = 1 }) do
-  hl.bind("CONTROL + SUPER + SHIFT + " .. key, function()
-    local id = active_ws_id()
-    local n = M.step(id, delta)
-    hl.dispatch(hl.dsp.window.move({ workspace = tostring(M.move_target(id, n)), follow = false }))
-    focus_desk(n)
-  end)
+
+-- For the keybindings (keybinds.lua): show desk n, send the window there, step to a neighbouring desk, take the
+-- window along.
+function M.focus(n) focus_desk(n) end
+function M.move_to(n)
+  hl.dispatch(hl.dsp.window.move({ workspace = tostring(M.move_target(active_ws_id(), n)), follow = false }))
+end
+function M.go(delta) focus_desk(M.step(active_ws_id(), delta)) end
+function M.carry(delta)
+  local id = active_ws_id()
+  local n = M.step(id, delta)
+  hl.dispatch(hl.dsp.window.move({ workspace = tostring(M.move_target(id, n)), follow = false }))
+  focus_desk(n)
 end
 
 -- Desks 1-5 belong to the main monitor, so without it Hyprland would open the laptop panel on workspace 6.

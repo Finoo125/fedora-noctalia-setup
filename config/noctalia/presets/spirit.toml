@@ -1,9 +1,9 @@
-# Preset "fedora": Fedora's own wallpaper of the installed release, night version. tonal palette, no bar background (floating capsules only), glass panels.
-# wallpaper = ~/Pictures/Wallpapers/fedora-night.jpg
-# source = fedora-night
+# Preset "spirit": night forest with a glowing spirit stag. wallpaper palette (faithful), no bar background (floating capsules only), glass panels.
+# wallpaper = ~/Pictures/Wallpapers/wallhaven-jeej1q.jpg
+# source = https://w.wallhaven.cc/full/je/wallhaven-jeej1q.jpg
 [theme]
 source           = "wallpaper"
-wallpaper_scheme = "m3-tonal-spot"
+wallpaper_scheme = "faithful"
 terminal_colors  = "standard"
 
 [bar.default]
