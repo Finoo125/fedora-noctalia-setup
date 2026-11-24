@@ -5,6 +5,30 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/fedora-noctalia-setup/install.log"
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/fedora-noctalia-setup"
 
+CHOICES_FILE="$STATE_DIR/choices"
+# Optional software groups (lib/packages.sh); every group is on until the TUI saves a choice.
+ALL_GROUPS="gaming dev printing flatpak"
+
+# load_choices: SOFTWARE_GROUPS and PRESET_CHOICE from the choices file, unless already set (tests, env).
+load_choices() {
+  local key value
+  [[ -f "$CHOICES_FILE" ]] || return 0
+  while IFS='=' read -r key value; do
+    case "$key" in
+      groups) [[ -n "${SOFTWARE_GROUPS+set}" ]] || SOFTWARE_GROUPS="$value" ;;
+    esac
+  done <"$CHOICES_FILE"
+}
+
+# save_choices: what the TUI chose, so `update` installs the same groups again.
+save_choices() {
+  mkdir -p "$STATE_DIR"
+  printf 'groups=%s\n' "${SOFTWARE_GROUPS-$ALL_GROUPS}" >"$CHOICES_FILE"
+}
+
+# group_on NAME -> 0 when software group NAME is chosen.
+group_on() { [[ " ${SOFTWARE_GROUPS-$ALL_GROUPS} " == *" $1 "* ]]; }
+
 OLD_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/fedora-hyprland"
 
 # migrate_state: a fedora-hyprland machine keeps its answers ("no" to a question) and its applied-once settings.
@@ -29,8 +53,15 @@ ask() {
 }
 
 # ask_once KEY QUESTION [DEFAULT] -> like ask, but a "no" is remembered so later runs don't ask again.
+# ANSWER_<KEY> (dashes as underscores) = yes|no answers in advance: the TUI collects every answer before installing.
 ask_once() {
-  local marker="$STATE_DIR/declined-$1"
+  local marker="$STATE_DIR/declined-$1" answer="ANSWER_${1//-/_}"
+  if [[ -n "${!answer:-}" ]]; then
+    if [[ "${!answer}" == yes ]]; then rm -f "$marker"; return 0; fi
+    mkdir -p "$STATE_DIR"
+    : >"$marker"
+    return 1
+  fi
   [[ -f "$marker" ]] && return 1
   if ask "$2" "${3:-n}"; then return 0; fi
   mkdir -p "$STATE_DIR"

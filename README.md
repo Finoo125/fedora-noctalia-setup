@@ -50,15 +50,35 @@ git clone https://github.com/Finoo125/fedora-noctalia-setup ~/.local/share/fedor
 systemctl reboot
 ```
 
-Run it as your normal user; it asks for your password when it needs it. A full log is kept in
-`~/.cache/fedora-noctalia-setup/install.log`. If something fails, fix it and run `install.sh` again: finished steps are skipped.
+Run it as your normal user. In a terminal it opens a full-screen installer:
 
-First it shows the language, keyboard layout and timezone you picked in the Fedora installer. Press Enter to keep them,
-or answer `n` to choose others. Umbriel and the login screen use the system keyboard layout. To change it later:
+1. **Welcome:** what it found (Fedora version, btrfs, keyboard and timezone, GPU, login screen, an old fedora-hyprland).
+2. **Desktop & software:** Umbriel and the Plasma fallback are always installed. Tick the optional groups (Gaming,
+   Development, Printing and scanners, Flatpak apps), the NVIDIA driver when a supported card is there, and the extras
+   (fingerprint login, hourly `/home` snapshots, snapshots in the boot menu, ArtCraft Launcher).
+3. **Look:** one of the `noctalia-preset` looks, or plain Ayu.
+4. **Review:** what will be added, set up and removed. Nothing changes before **Install now**; **Show every package**
+   lists them all.
+5. **Install:** asks for your password once, then shows each step, dnf's progress and the latest log lines.
+6. **Done:** enrolls the fingerprint if you ticked it, and reboots if you want.
+
+Keys: arrows (or j/k) move, Space ticks, Enter continues, Backspace goes back, Esc quits. It needs a window of at
+least 80x24; on the Linux console it uses 16 colors and plain ASCII.
+
+The groups you chose are saved in `~/.local/state/fedora-noctalia-setup/choices`, so `update` installs the same ones.
+Unticking a group later doesn't remove what is already installed.
+
+```bash
+./install.sh --dry-run   # list the packages and steps, change nothing
+./install.sh --plain     # plain text, questions asked inline (what `update` runs)
+```
+
+A full log is kept in `~/.cache/fedora-noctalia-setup/install.log`. If something fails, fix it and run `install.sh`
+again: finished steps are skipped.
+
+Language, keyboard layout and timezone are the ones you picked in the Fedora installer (the plain installer offers to
+change them). Umbriel and the login screen use the system keyboard layout. To change it later:
 `sudo localectl set-x11-keymap us`, then `update`.
-
-At the end it may ask four questions: enroll a fingerprint, take hourly snapshots of `/home`, add system snapshots to
-the boot menu, and install the ArtCraft Launcher (alpha creative apps). A "no" is remembered, so you aren't asked again.
 
 ## Snapshots and backups
 
@@ -256,7 +276,7 @@ Older cards get a pointer to RPM Fusion's legacy driver.
 
 - Keybind set originally from [CachyOS](https://github.com/CachyOS/cachyos-hypr-noctalia), written fresh.
 - [Noctalia](https://github.com/noctalia-dev) (shell, Umbriel, Luciole, greeter) and [Terra](https://terrapkg.com).
-- Installer ideas from [Abijspy/noctalia-installer](https://github.com/Abijspy/noctalia-installer) and the
+- Installer layout inspired by [Abijspy/noctalia-installer](https://github.com/Abijspy/noctalia-installer) and the
   [Noctalia Fedora Remix](https://sourceforge.net/projects/noctalia-fedora-remix/).
 - Wallpapers belong to their authors and are downloaded from their repos during install, not stored here:
   [AngelJumbo/gruvbox-wallpapers](https://github.com/AngelJumbo/gruvbox-wallpapers),

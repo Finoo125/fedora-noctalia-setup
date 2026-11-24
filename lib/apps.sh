@@ -95,8 +95,10 @@ install_cursors() {
 }
 
 install_apps() {
-  install_jetbrains_toolbox
-  install_claude_code
+  if group_on dev; then
+    install_jetbrains_toolbox
+    install_claude_code
+  fi
   install_nerd_font
   install_cursors
 }

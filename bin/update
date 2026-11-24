@@ -17,5 +17,5 @@ fwupdmgr update -y --no-reboot-check || echo "No firmware updates."
 # install.sh also builds the NVIDIA module for a new kernel, if this machine uses one.
 log "fedora-noctalia-setup defaults"
 git -C "$REPO_DIR" pull --ff-only
-"$REPO_DIR/install.sh"
+"$REPO_DIR/install.sh" --plain
 log "If firmware or the kernel was updated, reboot to finish: systemctl reboot"

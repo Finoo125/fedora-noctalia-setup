@@ -89,6 +89,27 @@ set_kde_settings() {
   : >"$marker"
 }
 
+# preset_wallpaper FILE -> the wallpaper a preset names on its "# wallpaper = PATH" line, ~ expanded.
+preset_wallpaper() {
+  local path
+  path=$(sed -n 's/^# wallpaper = //p' "$1" 2>/dev/null | head -1)
+  [[ -n "$path" ]] && echo "${path/#\~/$HOME}"
+}
+
+# apply_preset NAME: the look chosen in the TUI ("off" = none). In a running Noctalia, noctalia-preset switches it
+# live; otherwise (first install) only the link is set and the preset's wallpaper becomes the default.
+apply_preset() {
+  local active="$HOME/.config/noctalia/30-preset.toml" file="$REPO_DIR/config/noctalia/presets/$1.toml"
+  if pgrep -x noctalia >/dev/null 2>&1; then
+    "$REPO_DIR/bin/noctalia-preset" "$1" >/dev/null || warn "Could not switch the look to $1."
+    return 0
+  fi
+  if [[ "$1" == off ]]; then rm -f "$active"; return 0; fi
+  [[ -f "$file" ]] || { warn "There is no look named $1."; return 0; }
+  mkdir -p "$(dirname "$active")"
+  ln -sfn "$file" "$active"
+}
+
 wallpaper_urls() { grep -vE '^[[:space:]]*(#|$)' "$1"; }
 default_wallpaper() { echo "$2/$(basename "$(wallpaper_urls "$1" | head -1)")"; }
 
@@ -130,7 +151,7 @@ set_desktop_settings() {
 }
 
 setup_user() {
-  local item list="$REPO_DIR/config/wallpapers.txt"
+  local item wall list="$REPO_DIR/config/wallpapers.txt"
   xdg-user-dirs-update
   mkdir -p "$HOME/.config/noctalia"
   ln -sfn "$REPO_DIR/config/noctalia/00-fedora-noctalia.toml" "$HOME/.config/noctalia/00-fedora-noctalia.toml"
@@ -144,7 +165,11 @@ setup_user() {
   # Noctalia's btop template only switches the theme in an existing btop.conf; btop fills in the rest itself.
   write_once "$HOME/.config/btop/btop.conf" 'color_theme = "noctalia"'
   download_wallpapers "$list" "$WALL_DIR"
-  noctalia_local_toml "$(default_wallpaper "$list" "$WALL_DIR")" "$WALL_DIR" >"$HOME/.config/noctalia/10-fedora-noctalia-local.toml"
+  wall=$(default_wallpaper "$list" "$WALL_DIR")
+  if [[ -n "${PRESET_CHOICE:-}" && "$PRESET_CHOICE" != off ]]; then
+    wall=$(preset_wallpaper "$REPO_DIR/config/noctalia/presets/$PRESET_CHOICE.toml" || echo "$wall")
+  fi
+  noctalia_local_toml "$wall" "$WALL_DIR" >"$HOME/.config/noctalia/10-fedora-noctalia-local.toml"
   set_desktop_settings
   set_kde_settings
   # Dolphin's "Open with" list and the KDE apps' file associations come from this cache.
@@ -157,6 +182,7 @@ setup_user() {
   mkdir -p "$HOME/.local/bin"
   ln -sfn "$REPO_DIR/bin/update" "$HOME/.local/bin/update"
   ln -sfn "$REPO_DIR/bin/noctalia-preset" "$HOME/.local/bin/noctalia-preset"
+  if [[ -n "${PRESET_CHOICE:-}" ]]; then apply_preset "$PRESET_CHOICE"; fi
 }
 
 # migrate_from_fedora_hyprland CONFIG_DIR: once, moves a fedora-hyprland machine over. Only what fedora-hyprland (or

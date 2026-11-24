@@ -31,8 +31,7 @@ DNF_DESKTOP=(umbriel-nightly xdg-desktop-portal-umbriel-nightly xwayland-satelli
 # Dolphin stays for the Plasma session and NAS shares (KIO).
 DNF_APPS=(ghostty kitty luciole-nightly dolphin ark okular gwenview kate kcalc kde-partitionmanager plasma-discover plasma-discover-flatpak
   ffmpegthumbs kdegraphics-thumbnailers firefox mpv mpv-mpris kde-connect
-  pavucontrol thunderbird telegram-desktop discord flatseal
-  signal-desktop heroic-games-launcher protonplus faugus-launcher mission-center)
+  pavucontrol thunderbird telegram-desktop discord flatseal signal-desktop mission-center)
 # Drives, network shares and devices in Dolphin: kio-extras (smb, nfs, sftp, mtp, afc for iPhones), kamera (cameras).
 # kio-fuse gives smb://, mtp:// etc. a real path so non-KDE apps (mpv, ...) can open files there too.
 # gvfs stays for the GTK apps (trash, recent files).
@@ -43,8 +42,11 @@ DNF_CLI=(git gh wget2-wget curl fastfetch btop bat eza fzf ripgrep fd-find zoxid
 DNF_MEDIA=(intel-media-driver libva-utils)
 # AMD only: Fedora's mesa leaves out H.264/HEVC hardware decoding, RPM Fusion's build has it.
 DNF_AMD=(mesa-va-drivers-freeworld)
-DNF_GAMING=(steam gamemode mangohud gamescope lutris protontricks winetricks vulkan-tools)
-DNF_SYSTEM=(fuse-libs cups cups-pk-helper cups-pdf hplip gutenprint-cups foomatic-db system-config-printer avahi nss-mdns
+# Optional groups (ALL_GROUPS in lib/common.sh): chosen in the TUI, all on for a plain run.
+DNF_GAMING=(steam gamemode mangohud gamescope lutris protontricks winetricks vulkan-tools
+  heroic-games-launcher protonplus faugus-launcher)
+DNF_PRINTING=(cups cups-pk-helper cups-pdf hplip gutenprint-cups foomatic-db system-config-printer)
+DNF_SYSTEM=(fuse-libs avahi nss-mdns
   NetworkManager-openvpn-gnome NetworkManager-openconnect-gnome wireguard-tools fprintd fprintd-pam
   snapper btrfs-assistant btrfsmaintenance smartmontools libdnf5-plugin-actions fwupd thermald intel-lpmd inotify-tools)
 DNF_DEV=(gcc make uv python3 python3.12 python3.13 nodejs24 nodejs24-npm podman distrobox code
@@ -72,14 +74,27 @@ FLATPAK_THEMES=(org.gtk.Gtk3theme.adw-gtk3 org.gtk.Gtk3theme.adw-gtk3-dark)
 # all_dnf_packages -> every dnf package the installer may install, one per line (CI checks they exist).
 all_dnf_packages() {
   printf '%s\n' "${DNF_BASE[@]}" "${DNF_DESKTOP[@]}" "${DNF_APPS[@]}" "${DNF_STORAGE[@]}" "${DNF_CLI[@]}" "${DNF_MEDIA[@]}" \
-    "${DNF_GAMING[@]}" "${DNF_SYSTEM[@]}" "${DNF_DEV[@]}" "${DNF_NVIDIA[@]}" "${DNF_SECUREBOOT[@]}" "${DNF_AMD[@]}" \
+    "${DNF_GAMING[@]}" "${DNF_PRINTING[@]}" "${DNF_SYSTEM[@]}" "${DNF_DEV[@]}" "${DNF_NVIDIA[@]}" "${DNF_SECUREBOOT[@]}" "${DNF_AMD[@]}" \
     "${DNF_PLASMA[@]}" ffmpeg
 }
 
-# main_dnf_packages -> the packages install_packages installs in one dnf transaction, one per line.
+# group_packages GROUP -> the dnf packages of an optional group, one per line (flatpak has none).
+group_packages() {
+  case "$1" in
+    gaming) printf '%s\n' "${DNF_GAMING[@]}" ;;
+    dev) printf '%s\n' "${DNF_DEV[@]}" ;;
+    printing) printf '%s\n' "${DNF_PRINTING[@]}" ;;
+  esac
+}
+
+# main_dnf_packages -> the packages install_packages installs in one dnf transaction, one per line: the base
+# plus the chosen groups.
 main_dnf_packages() {
-  printf '%s\n' "${DNF_DESKTOP[@]}" "${DNF_APPS[@]}" "${DNF_STORAGE[@]}" "${DNF_CLI[@]}" "${DNF_SYSTEM[@]}" \
-    "${DNF_GAMING[@]}" "${DNF_DEV[@]}"
+  local group
+  printf '%s\n' "${DNF_DESKTOP[@]}" "${DNF_APPS[@]}" "${DNF_STORAGE[@]}" "${DNF_CLI[@]}" "${DNF_SYSTEM[@]}"
+  for group in $ALL_GROUPS; do
+    if group_on "$group"; then group_packages "$group"; fi
+  done
 }
 
 # Other desktops' shells, sessions and login managers. A dependency that drags one in (as GParted once did
@@ -129,11 +144,13 @@ setup_repos() {
   for repo in $(dnf repo list --all | terra_extra_repos); do
     sudo dnf config-manager setopt "$repo.enabled=0"
   done
-  if [[ ! -f /etc/yum.repos.d/docker-ce.repo ]]; then
-    sudo dnf config-manager addrepo --from-repofile=https://download.docker.com/linux/fedora/docker-ce.repo
+  if group_on dev; then
+    if [[ ! -f /etc/yum.repos.d/docker-ce.repo ]]; then
+      sudo dnf config-manager addrepo --from-repofile=https://download.docker.com/linux/fedora/docker-ce.repo
+    fi
+    sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc
+    write_root /etc/yum.repos.d/vscode.repo "$VSCODE_REPO"
   fi
-  sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc
-  write_root /etc/yum.repos.d/vscode.repo "$VSCODE_REPO"
   sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 }
 
@@ -179,7 +196,11 @@ remove_replaced_apps() {
 }
 
 install_flatpaks() {
-  sudo flatpak install -y --noninteractive flathub "${FLATPAKS[@]}" "${FLATPAK_THEMES[@]}"
+  if group_on flatpak; then
+    sudo flatpak install -y --noninteractive flathub "${FLATPAKS[@]}" "${FLATPAK_THEMES[@]}"
+  else
+    sudo flatpak install -y --noninteractive flathub "${FLATPAK_THEMES[@]}"
+  fi
   # Cursors (and icons) installed for your user live in ~/.local/share/icons, which Flatpaks can't see otherwise.
   # Noctalia's colors: GTK apps read them from gtk-3.0/gtk-4.0, Qt apps from kdeglobals through the KDE runtime's
   # platform theme, like the desktop itself (without it Qt Flatpaks get Qt's plain look).

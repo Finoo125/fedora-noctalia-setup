@@ -26,6 +26,27 @@ assert_eq "user" "$(cat "$tmp/dest")" "write_once keeps an existing file"
 write_once "$tmp/gen/file" "generated"
 assert_eq "generated" "$(cat "$tmp/gen/file")" "write_once creates missing files"
 
+STATE_DIR="$tmp/state"; CHOICES_FILE="$STATE_DIR/choices"
+SOFTWARE_GROUPS="gaming dev"; save_choices
+unset SOFTWARE_GROUPS; load_choices
+assert_eq "gaming dev" "${SOFTWARE_GROUPS:-}" "saved groups load again"
+SOFTWARE_GROUPS="printing"; load_choices
+assert_eq "printing" "$SOFTWARE_GROUPS" "a group choice from the environment wins"
+SOFTWARE_GROUPS=""; save_choices; unset SOFTWARE_GROUPS; load_choices
+assert_false "no groups stays no groups" group_on gaming
+rm -f "$CHOICES_FILE"; unset SOFTWARE_GROUPS
+assert_true "without a choice every group is on" group_on flatpak
+
+ANSWER_home_snapshots=yes
+assert_true "an answer from the TUI is a yes" ask_once home-snapshots "Q?" n
+ANSWER_artcraft=no
+assert_false "an answer from the TUI is a no" ask_once artcraft "Q?" y
+assert_true "the TUI's no is remembered for plain runs" test -f "$STATE_DIR/declined-artcraft"
+ANSWER_artcraft=yes
+assert_true "a later yes in the TUI wins over a remembered no" ask_once artcraft "Q?" n
+assert_false "and forgets the no" test -f "$STATE_DIR/declined-artcraft"
+unset ANSWER_home_snapshots ANSWER_artcraft
+
 ASSUME=yes; assert_true  "ASSUME=yes answers yes" ask "Question?" n
 ASSUME=no;  assert_false "ASSUME=no answers no"   ask "Question?" y
 

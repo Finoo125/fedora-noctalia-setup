@@ -111,6 +111,15 @@ rm -f "$STATE_DIR/fedora-hyprland-migrated"
 migrate_from_fedora_hyprland "$old"
 assert_eq "# my own config" "$(cat "$old/umbriel/config.toml")" "a config you wrote yourself is never replaced"
 
+# Looks: the preset names its wallpaper; without a running Noctalia only the link is set.
+HOME="$tmp/home"; REPO_DIR="$PWD"; mkdir -p "$HOME"
+assert_eq "$HOME/Pictures/Wallpapers/wallhaven-rq6j57.png" "$(preset_wallpaper config/noctalia/presets/waterfall.toml)" "a preset's wallpaper, ~ expanded"
+assert_eq "" "$(preset_wallpaper "$tmp/missing.toml")" "no wallpaper for a missing preset"
+( pgrep() { return 1; }; apply_preset night )
+assert_eq "$PWD/config/noctalia/presets/night.toml" "$(readlink "$HOME/.config/noctalia/30-preset.toml")" "the chosen look is linked"
+( pgrep() { return 1; }; apply_preset off )
+assert_false "off removes the look" test -e "$HOME/.config/noctalia/30-preset.toml"
+
 # State: answers and applied-once settings carry over from fedora-hyprland, once.
 OLD_STATE_DIR="$tmp/st-old"; STATE_DIR="$tmp/st-new"; mkdir -p "$OLD_STATE_DIR"; : >"$OLD_STATE_DIR/declined-artcraft"
 migrate_state

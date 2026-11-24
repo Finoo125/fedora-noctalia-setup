@@ -86,6 +86,19 @@ assert_eq $'Thunar\ngnome-software\ngnome-software-fedora-langpacks' "$(removal_
   "dependent packages count as removed too"
 assert_false "NVIDIA drivers are not in the main install"   grep -qx akmod-nvidia <<<"$main"
 
+# Software groups: everything by default, only the chosen ones otherwise; the base is always there.
+for group in $ALL_GROUPS; do assert_true "group $group is on by default" group_on "$group"; done
+assert_true  "Steam is in a default install"          grep -qx steam <<<"$main"
+lean=$(SOFTWARE_GROUPS="printing"; main_dnf_packages)
+assert_false "no Steam without the gaming group"      grep -qx steam <<<"$lean"
+assert_false "no Docker without the dev group"        grep -qx docker-ce <<<"$lean"
+assert_true  "printing comes with its group"          grep -qx cups <<<"$lean"
+assert_true  "the desktop is always installed"        grep -qx umbriel-nightly <<<"$lean"
+assert_true  "KDE apps are always installed"          grep -qx dolphin <<<"$lean"
+none=$(SOFTWARE_GROUPS=""; main_dnf_packages)
+assert_false "an empty choice means no groups, not all" grep -qx cups <<<"$none"
+assert_eq "$(sort <<<"$all" | uniq -d)" "" "groups don't repeat base packages"
+
 amd='03:00.0 VGA compatible controller: Advanced Micro Devices, Inc. [AMD/ATI] Navi 22 [Radeon RX 6700 XT] (rev c1)'
 intel='00:02.0 VGA compatible controller: Intel Corporation Alder Lake-UP3 GT2 [Iris Xe Graphics] (rev 0c)'
 nvidia='01:00.0 VGA compatible controller: NVIDIA Corporation AD107M [GeForce RTX 4060 Max-Q / Mobile] (rev a1)'
