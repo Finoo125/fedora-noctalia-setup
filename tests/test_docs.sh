@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # The documentation stays in step with the code: links resolve, every look and every default keybinding is listed.
+# shellcheck disable=SC2016 # the backticks in the patterns are markdown, not commands
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 source tests/lib.sh
