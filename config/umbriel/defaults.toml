@@ -1,0 +1,216 @@
+# fedora-noctalia-setup defaults for Umbriel. Included by ~/.config/umbriel/config.toml, which is applied after this
+# file, so what you set there wins: tables merge key by key, but a list (like general.autostart) replaces this one.
+# Reloads on save; check with `umbriel config validate`. Reference: https://docs.noctalia.dev/umbriel/
+#
+# Next to your config.toml:
+#   monitors.toml    docked monitors, written by scripts/dock.sh the first time the HP monitors are plugged in
+#                    (Umbriel matches monitors by make+model+serial, so the serials are filled in then)
+#   noctalia.toml    border and overview colors from Noctalia's umbriel template
+#   scripts/         links to this repo's desks.sh (five linked desks) and dock.sh (laptop panel off when docked)
+
+# ==============================================================================
+# Session
+
+[general]
+# XDG autostart entries (KDE Connect etc.) run on their own: umbriel-session.target pulls in xdg-desktop-autostart.target.
+autostart = [
+  "noctalia",
+  "udiskie --no-notify --no-tray",
+  "~/.config/umbriel/scripts/dock.sh",
+]
+# X11 apps (Steam, some games) draw at full resolution on a scaled panel (xwayland.force_zero_scaling).
+xwayland_native_resolution = true
+
+# For Umbriel and everything it starts; also published to the systemd user manager (Noctalia, portals).
+# XCURSOR_* is set from [input.cursor] below.
+[environment]
+# Qt and KDE apps read Noctalia's KDE color scheme, Breeze, Papirus and the fonts from kdeglobals (plasma-integration).
+QT_QPA_PLATFORMTHEME = "kde"
+# KDE apps find the app menu (Dolphin's "Open with") in Plasma's menu file, outside Plasma too.
+XDG_MENU_PREFIX = "plasma-"
+ELECTRON_OZONE_PLATFORM_HINT = "auto"
+TERMINAL = "ghostty"
+
+# ==============================================================================
+# Laptop panel. Docked monitors go in monitors.toml (scripts/dock.sh writes the HP ones).
+
+[output.eDP-1]
+scale = 1
+workspaces = 5
+workspace_axis = "horizontal"   # three-finger swipe left/right changes desk, like hl.gesture
+
+# ==============================================================================
+# Look
+
+[appearance]
+prefer_no_csd = true
+border_width = 2
+corner_radius = 14
+
+[appearance.shadow]
+enabled = true
+
+[appearance.blur]
+enabled = true
+radius = 3
+
+[layout]
+mode = "master"
+gap = 10                 # gaps_in 5 + gaps_in 5 between windows, gaps_out 10 at the edges
+
+# One window left, the rest stacked on the right; new windows join the stack at the bottom.
+[layout.master]
+position = "left"
+default_width_fraction = 0.5
+new_on_top = false
+new_becomes_master = false
+
+# Noctalia's own panels animate themselves.
+[animation.layers]
+enabled = false
+
+[workspaces]
+back_and_forth = false
+
+# ==============================================================================
+# Input. An empty keyboard layout uses the system keymap from localectl (install.sh asks for it).
+
+[input.keyboard]
+layout = ""
+numlock_toggle = true
+
+[input.focus]
+follows_mouse = "sloppy"   # follow_mouse = 1
+
+[input.touchpad]
+tap = true
+natural_scroll = true
+
+[input.mouse]
+natural_scroll = true
+
+[input.cursor]
+theme = "Classic-pointer"
+size = 32
+
+# ==============================================================================
+# Keybinds. This table replaces Umbriel's built-in set.
+# Super+drag moves a window and Super+right-drag resizes it; both are built in.
+
+[keybinds]
+# Windows
+"Mod+Q" = { action = "window-close", repeat = false }
+"Mod+Escape" = { action = "window-kill", repeat = false }
+"Mod+Alt+Space" = { action = "window-toggle-floating", repeat = false }
+"Mod+D" = { action = "window-toggle-maximize", repeat = false }
+"Mod+F" = { action = "window-toggle-fullscreen", repeat = false }
+"Mod+J" = "window-swap-left"   # from the stack this swaps with the master window
+"Mod+Left" = "window-focus-or-output-left"
+"Mod+Right" = "window-focus-or-output-right"
+"Mod+Up" = "window-focus-up"
+"Mod+Down" = "window-focus-down"
+"Mod+Shift+Left" = "window-move-or-output-left"
+"Mod+Shift+Right" = "window-move-or-output-right"
+"Mod+Shift+Up" = "window-move-up"
+"Mod+Shift+Down" = "window-move-down"
+"Alt+Tab" = "window-focus-next"
+"Mod+Tab" = { action = "spawn noctalia msg window-switcher", repeat = false }
+"Mod+Alt+1" = "output-focus-left"    # portrait monitor
+"Mod+Alt+2" = "output-focus-right"   # main monitor
+"Mod+S" = "scratchpad-toggle"
+"Mod+Ctrl+S" = { action = "window-toggle-scratchpad", repeat = false }
+# Umbriel extras
+"Mod+O" = { action = "overview-toggle", repeat = false }
+"Mod+Shift+Escape" = { action = "shortcuts-inhibit-toggle", allow_when_inhibited = true, repeat = false }
+
+# Apps
+"Mod+Return" = { action = "spawn ghostty +new-window", repeat = false }
+"Mod+E" = { action = "spawn luciole", repeat = false }
+"Mod+W" = { action = "spawn firefox", repeat = false }
+"Mod+T" = { action = "spawn kate --new", repeat = false }
+"Mod+C" = { action = "spawn kcalc", repeat = false }
+"XF86Calculator" = { action = "spawn kcalc", repeat = false }
+"Ctrl+Shift+Escape" = { action = "spawn ghostty +new-window -e btop", repeat = false }
+
+# Noctalia
+"Mod+Space" = { action = "spawn noctalia msg panel-toggle launcher", repeat = false }
+"Mod+Period" = { action = "spawn noctalia msg panel-toggle launcher /emo", repeat = false }
+"Mod+X" = { action = "spawn noctalia msg panel-toggle control-center", repeat = false }
+"Mod+Z" = { action = "spawn noctalia msg settings-toggle", repeat = false }
+"Mod+A" = { action = "spawn noctalia msg panel-toggle control-center notifications", repeat = false }
+"Mod+V" = { action = "spawn noctalia msg panel-toggle clipboard", repeat = false }
+"Mod+L" = { action = "spawn noctalia msg session lock", repeat = false }
+"Mod+Alt+C" = { action = "spawn noctalia msg panel-toggle session", repeat = false }
+"Mod+Shift+W" = { action = "spawn noctalia msg panel-toggle wallpaper", repeat = false }
+"Print" = { action = "spawn noctalia msg screenshot-region", repeat = false }
+"Mod+Print" = { action = "spawn noctalia msg screenshot-fullscreen", repeat = false }
+"Mod+Shift+S" = { action = "spawn noctalia msg plugin noctalia/screen_recorder:service all toggle", repeat = false }
+
+# Hardware keys (also work on the lock screen)
+"XF86AudioRaiseVolume" = { action = "spawn noctalia msg volume-up", allow_when_locked = true }
+"XF86AudioLowerVolume" = { action = "spawn noctalia msg volume-down", allow_when_locked = true }
+"XF86AudioMute" = { action = "spawn noctalia msg volume-mute", allow_when_locked = true, repeat = false }
+"XF86AudioMicMute" = { action = "spawn noctalia msg mic-mute", allow_when_locked = true, repeat = false }
+"XF86AudioPlay" = { action = "spawn noctalia msg media toggle", allow_when_locked = true, repeat = false }
+"XF86AudioPause" = { action = "spawn noctalia msg media toggle", allow_when_locked = true, repeat = false }
+"XF86AudioNext" = { action = "spawn noctalia msg media next", allow_when_locked = true, repeat = false }
+"XF86AudioPrev" = { action = "spawn noctalia msg media previous", allow_when_locked = true, repeat = false }
+"XF86MonBrightnessUp" = { action = "spawn noctalia msg brightness-up", allow_when_locked = true }
+"XF86MonBrightnessDown" = { action = "spawn noctalia msg brightness-down", allow_when_locked = true }
+
+# Five linked desks: Super+N shows workspace N on every monitor,
+# Super+Shift+N moves the window to desk N on its monitor, Ctrl+Super+Left/Right steps, with Shift the window comes along.
+"Mod+1" = { action = "spawn ~/.config/umbriel/scripts/desks.sh focus 1", repeat = false }
+"Mod+2" = { action = "spawn ~/.config/umbriel/scripts/desks.sh focus 2", repeat = false }
+"Mod+3" = { action = "spawn ~/.config/umbriel/scripts/desks.sh focus 3", repeat = false }
+"Mod+4" = { action = "spawn ~/.config/umbriel/scripts/desks.sh focus 4", repeat = false }
+"Mod+5" = { action = "spawn ~/.config/umbriel/scripts/desks.sh focus 5", repeat = false }
+"Mod+Shift+1" = { action = "window-move-to-workspace-silent 1", repeat = false }
+"Mod+Shift+2" = { action = "window-move-to-workspace-silent 2", repeat = false }
+"Mod+Shift+3" = { action = "window-move-to-workspace-silent 3", repeat = false }
+"Mod+Shift+4" = { action = "window-move-to-workspace-silent 4", repeat = false }
+"Mod+Shift+5" = { action = "window-move-to-workspace-silent 5", repeat = false }
+"Ctrl+Mod+Left" = { action = "spawn ~/.config/umbriel/scripts/desks.sh step -1", repeat = false }
+"Ctrl+Mod+Right" = { action = "spawn ~/.config/umbriel/scripts/desks.sh step 1", repeat = false }
+"Ctrl+Mod+Shift+Left" = { action = "spawn ~/.config/umbriel/scripts/desks.sh carry -1", repeat = false }
+"Ctrl+Mod+Shift+Right" = { action = "spawn ~/.config/umbriel/scripts/desks.sh carry 1", repeat = false }
+
+# ==============================================================================
+# Window rules
+
+# Blur behind translucent windows (Ghostty).
+[[window_rule]]
+blur = true
+
+[[window_rule]]
+match.app_id = "^dev.noctalia.Noctalia$"
+default_floating = true
+default_floating_size_px = { width = 1080, height = 920 }
+
+[[window_rule]]
+match.app_id = "^(org.kde.kcalc|nm-connection-editor|system-config-printer)$"
+default_floating = true
+
+[[window_rule]]
+match.app_id = "^dev.noctalia.UmbrielSharePicker$"
+default_floating = true
+default_floating_size_px = { width = 800, height = 600 }
+
+[[window_rule]]
+match.title = "^(Picture-in-Picture|Picture in picture)$"
+default_floating = true
+default_maximize = false
+default_position = { x = 20, y = 20, anchor = "bottom_right" }
+
+# ==============================================================================
+# Layer rules
+
+[[layer_rule]]
+match.namespace = "^noctalia-(bar-[^\"]+|notification|dock|panel|attached-panel|osd|window-switcher|desktop-widget-[^\"]*)$"
+blur = true
+blur_ignore_alpha = 0.5
+blur_popups = true
+
+[[layer_rule]]
+match.namespace = "^noctalia-(notification|dock|panel|attached-panel|osd|window-switcher)$"
+blur_optimized = false

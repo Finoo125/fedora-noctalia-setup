@@ -1,0 +1,50 @@
+# fedora-noctalia-setup defaults for Noctalia v5. Your own ~/.config/noctalia/*.toml files and the Settings GUI override these.
+
+[theme]
+mode    = "dark"
+source  = "builtin"
+builtin = "Ayu"
+
+[theme.templates]
+enable_builtin_templates = true
+# kcolorscheme: ~/.local/share/color-schemes/noctalia.colors for Dolphin and every KDE/Qt app (via the kde Qt theme),
+# merged into kdeglobals so the Plasma fallback has the same colors. It replaces the plain Qt (qt6ct) template.
+builtin_ids = ["gtk3", "gtk4", "kcolorscheme", "ghostty", "kitty", "btop", "umbriel", "firefox", "luciole"]   # Firefox also needs the Pywalfox extension
+# umbriel: ~/.config/umbriel/noctalia.toml, the border and overview colors
+
+[shell]
+polkit_agent = true   # password prompts for Btrfs Assistant, Discover and other admin actions
+# Umbriel's overview (Super+O): type to search apps, and it closes once one starts.
+umbriel_overview_type_to_launch_enabled  = true
+umbriel_overview_close_on_launch_enabled = true
+
+[bar.default]
+margin_ends      = 0   # full width, like CachyOS: no gap at either end
+radius_top_left  = 0
+radius_top_right = 0
+
+[wallpaper]
+enabled   = true
+fill_mode = "span"   # one image across both docked monitors; crop on a single screen
+
+[idle.behavior.lock]
+enabled = true
+timeout = 600
+action  = "lock"
+
+[idle.behavior.screen-off]
+enabled = true
+timeout = 660
+action  = "screen_off"
+
+[idle.behavior.suspend]
+enabled = true
+timeout = 1800
+action  = "lock_and_suspend"
+
+[plugins]
+enabled = [
+  "icefish/phone-connect",     # KDE Connect: battery, ring, SMS, clipboard for the Pixel
+  "noctalia/screen_recorder",  # Super+Shift+S starts/stops a recording (gpu-screen-recorder), saved to ~/Videos/Recordings
+  "aristides/udiskie",         # USB drive panel and notifications; udiskie itself mounts them (autostart.lua)
+]

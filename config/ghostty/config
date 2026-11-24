@@ -1,0 +1,16 @@
+# fedora-noctalia-setup default (created once; yours to edit). Noctalia's ghostty template adds the colors (theme = noctalia),
+# so they follow the desktop's scheme and wallpaper. Font, padding and borders match kitty's.
+font-family = JetBrainsMono Nerd Font
+font-size = 11
+window-padding-x = 12
+window-padding-y = 10
+window-padding-balance = true
+window-padding-color = extend
+# Umbriel draws the rounded border in the Noctalia accent color, so no GTK title bar; the tab bar uses the terminal colors.
+gtk-titlebar = false
+window-theme = ghostty
+# Slightly see-through, with Umbriel's blur behind it like Noctalia's panels. 1 for solid.
+background-opacity = 0.95
+cursor-style = block
+mouse-hide-while-typing = true
+confirm-close-surface = false
