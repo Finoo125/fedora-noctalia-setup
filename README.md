@@ -10,7 +10,7 @@ current.
 
 ## Install
 
-On a fresh Fedora 45 **Minimal Install** (btrfs, online):
+On a fresh Fedora 45 minimal install (**Fedora Custom Operating System** in the Fedora installer; btrfs, online):
 
 ```bash
 sudo dnf install -y git

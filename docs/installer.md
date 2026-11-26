@@ -1,13 +1,15 @@
 # The installer
 
-`install.sh` turns a fresh Fedora Minimal install into the desktop, and running it again is how changes and updates
+`install.sh` turns a fresh minimal Fedora install into the desktop, and running it again is how changes and updates
 are applied (`update` does that for you). Every step is safe to run twice: finished work is skipped.
 
 ## Before you start
 
-1. Download the Fedora 45 **Everything** netinstall ISO and choose **Minimal Install**. On a laptop without a network
-   cable, also tick **Hardware Support** and **Common NetworkManager Submodules**, otherwise Wi-Fi doesn't work after
-   the first boot.
+1. Download the Fedora 45 **Everything** netinstall ISO and choose **Fedora Custom Operating System** under Software
+   Selection (the minimal install; older Fedora releases called it **Minimal Install**). For Wi-Fi, also tick
+   **Common NetworkManager Submodules**. Intel Wi-Fi chips additionally need firmware the minimal install leaves out
+   and Fedora 45 no longer offers there, so on such a laptop connect a network cable or your phone (USB tethering)
+   for the first run; the installer then adds the firmware.
 2. Keep the default automatic partitioning (btrfs). Snapshots need it.
 3. Pick your language, keyboard layout and timezone in the Fedora installer; the desktop uses them.
 4. After the first boot, make sure you're online (`nmtui` for Wi-Fi).
@@ -61,6 +63,8 @@ remove it if it is already installed.
 
 Without a terminal (piped, or `ASSUME=yes ./install.sh`) it runs `--plain` and takes the defaults: Umbriel, the Plasma
 fallback, the ticked apps, the recommended drivers. `NVIDIA=yes` or `NVIDIA=no` answers the NVIDIA question ahead.
+sudo still needs your password: piped from a terminal it asks there; with no terminal at all (e.g. `ssh` without `-t`)
+it stops right away unless sudo works without a password for you.
 
 ## What it does, in order
 

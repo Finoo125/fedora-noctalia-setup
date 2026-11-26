@@ -180,4 +180,19 @@ assert_true "file dialogs are Luciole's, GTK's as fallback" grep -qx 'org.freede
 assert_true "Plasma keeps passwords in gnome-keyring too" \
   grep -qx 'org.freedesktop.impl.portal.Secret=gnome-keyring' config/xdg-desktop-portal/kde-portals.conf
 assert_true "gnome-keyring ships that portal" grep -qx gnome-keyring <<<"$(printf '%s\n' "${DNF_DESKTOP[@]}")"
+# Replaced packages that something else still needs stay (fresh install: Luciole needs ffmpegthumbnailer).
+# shellcheck disable=SC2032 # only the test calls the fake, never through sudo
+rpm() { # fake: --whatrequires NAME
+  case "$3" in
+    ffmpegthumbnailer) echo luciole-nightly ;;
+    tumbler) echo Thunar ;;
+    Thunar) echo thunar-volman ;;
+    *) echo "no package requires $3" ;;
+  esac
+}
+assert_eq "qview" "$(not_required_elsewhere ffmpegthumbnailer qview)" "a replaced package Luciole needs is not removed"
+assert_eq $'Thunar\ntumbler\nthunar-volman' "$(not_required_elsewhere Thunar tumbler thunar-volman)" "packages that only need each other are removed together"
+assert_eq "" "$(not_required_elsewhere tumbler)" "tumbler stays while Thunar is installed"
+unset -f rpm
+
 finish

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# fedora-noctalia-setup: turns a fresh Fedora 44 Minimal install into a Noctalia desktop: Umbriel, Noctalia v5,
+# fedora-noctalia-setup: turns a fresh minimal Fedora install into a Noctalia desktop: Umbriel, Noctalia v5,
 # the Noctalia login screen and Luciole, with KDE Plasma as a fallback session.
 # Usage (as your normal user; re-running is safe and is how updates are applied):
 #   ./install.sh            the full-screen installer, in a terminal
@@ -29,7 +29,12 @@ preflight_checks() {
 
 # sudo_session: asks for the password once and keeps sudo's timestamp fresh for the whole run.
 sudo_session() {
-  sudo -v
+  # sudo asks on /dev/tty, so a piped run from a terminal works; without any terminal (cron, ssh without -t) it can't.
+  if ! sudo -n true 2>/dev/null; then
+    { : </dev/tty; } 2>/dev/null ||
+      die "sudo needs your password and there is no terminal to ask in. Run it in a terminal (ssh -t), or allow sudo without a password for $USER."
+    sudo -v
+  fi
   # Keep sudo's timestamp fresh for the whole run.
   while sleep 50; do sudo -n true; kill -0 "$$" 2>/dev/null || exit; done 2>/dev/null &
 }

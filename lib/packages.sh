@@ -45,10 +45,12 @@ DNF_QT_THEME=(plasma-integration)
 # Replaced by the KDE apps; removed once when an older install is migrated (see remove_replaced_apps), unless
 # chosen in a menu (Thunar, VLC, Papers and GNOME Text Editor are choices now).
 # Also the Hyprland stack of a fedora-hyprland install (it came from the lionheartp COPR, which is removed).
+# Nothing the installer installs may require one of them (Luciole needs ffmpegthumbnailer and gvfs-smb, so they
+# stay); tests/repoquery.sh checks that in CI.
 REPLACED_PACKAGES=(hyprland hyprland-guiutils hyprland-uwsm uwsm xdg-desktop-portal-hyprland hyprpicker hyprqt6engine nwg-look
-  luciole-git Thunar thunar-archive-plugin thunar-volman tumbler ffmpegthumbnailer file-roller qview papers
+  luciole-git Thunar thunar-archive-plugin thunar-volman tumbler file-roller qview papers
   gnome-text-editor gnome-calculator gnome-software gnome-software-fedora-langpacks gnome-disk-utility gparted xfce-polkit
-  vlc qt6ct gvfs-fuse gvfs-smb gvfs-nfs gvfs-mtp gvfs-afc gvfs-gphoto2 gvfs-archive)
+  vlc qt6ct gvfs-fuse gvfs-nfs gvfs-mtp gvfs-afc gvfs-gphoto2 gvfs-archive)
 # adw-gtk3 for GTK3 Flatpaks (DBeaver); without it they fall back to light Adwaita. Noctalia switches between the two.
 FLATPAK_THEMES=(org.gtk.Gtk3theme.adw-gtk3 org.gtk.Gtk3theme.adw-gtk3-dark)
 
@@ -153,6 +155,27 @@ install_packages() {
   remove_replaced_apps
 }
 
+# not_required_elsewhere PACKAGE... -> the given packages that no other installed package requires, one per line.
+# Luciole needs ffmpegthumbnailer and gvfs-smb, a chosen Thunar needs tumbler: those stay. Repeated until nothing
+# changes, since keeping one can keep what it needs.
+not_required_elsewhere() {
+  local -a pkgs=("$@")
+  local p users changed=1
+  while ((changed)); do
+    changed=0
+    for p in "${pkgs[@]}"; do
+      users=$(rpm -q --whatrequires "$p" --qf '%{NAME}\n' 2>/dev/null | grep -v ' ' || true)
+      if [[ -n "$users" ]] && grep -qvxF -f <(printf '%s\n' "${pkgs[@]}") <<<"$users"; then
+        mapfile -t pkgs < <(printf '%s\n' "${pkgs[@]}" | grep -vxF "$p" || true)
+        changed=1
+        break
+      fi
+    done
+  done
+  ((${#pkgs[@]})) && printf '%s\n' "${pkgs[@]}"
+  return 0
+}
+
 # remove_replaced_apps: once per machine, removes what an older install had where something else took over: GTK apps
 # replaced by KDE apps, and fedora-hyprland's Hyprland stack.
 # Skipped (with a warning) if dnf would also remove anything else, so nothing you added yourself disappears.
@@ -164,6 +187,7 @@ remove_replaced_apps() {
   # Apps chosen in a menu stay, even when an older install treated them as replaced.
   mapfile -t installed < <(rpm -q --qf '%{NAME}\n' "${REPLACED_PACKAGES[@]}" 2>/dev/null | grep -v ' ' |
     grep -vxF -f <(main_dnf_packages) || true)
+  mapfile -t installed < <(not_required_elsewhere "${installed[@]}")
   if ((${#installed[@]})); then
     transaction=$(LC_ALL=C sudo dnf remove --assumeno --noautoremove "${installed[@]}" 2>&1 || true)
     extra=$(removal_names <<<"$transaction" | grep -vxF -f <(printf '%s\n' "${installed[@]}") || true)
