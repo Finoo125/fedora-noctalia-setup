@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Five linked desks. Each monitor has its own workspaces 1-5 in Umbriel,
 # so desk N is workspace N on every monitor.
-#   desks.sh focus N     show desk N on every monitor (the focused monitor keeps the focus)
-#   desks.sh step -1|1   previous/next desk, stopping at 1 and 5 like Windows
-#   desks.sh carry -1|1  the same, taking the focused window along
+#   desks focus N     show desk N on every monitor (the focused monitor keeps the focus)
+#   desks step -1|1   previous/next desk, stopping at 1 and 5 like Windows
+#   desks carry -1|1  the same, taking the focused window along
 set -u
 COUNT=5
 

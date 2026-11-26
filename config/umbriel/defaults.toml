@@ -5,7 +5,7 @@
 # Next to your config.toml:
 #   monitors.toml    your monitor layout, written by `monitors` (Umbriel matches monitors by make+model+serial)
 #   noctalia.toml    border and overview colors from Noctalia's umbriel template
-#   scripts/         a link to this repo's desks.sh (five linked desks)
+#   scripts/         a link to this repo's desks (five linked desks)
 
 # The standard keybindings (written from config/keybinds.tsv and your changes; see `keybinds`).
 [include.optional]

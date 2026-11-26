@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 # Starts the default app for a job, for the keybinds of every compositor: browser (Super+W), files (Super+E),
-# editor (Super+T). Installed as /usr/local/bin/open-default.
+# editor (Super+T); `terminal [CMD...]` opens the default terminal (Umbriel's keybinds use it, see kb_umbriel_spawn).
+# Installed as /usr/local/bin/open-default.
 # The defaults are the system's (xdg-mime), so a browser that makes itself the default is followed too.
 set -u
 case "${1:-}" in
   browser) mime=x-scheme-handler/https ;;
   files) mime=inode/directory ;;
   editor) mime=text/plain ;;
-  *) echo "usage: $0 browser|files|editor" >&2; exit 2 ;;
+  terminal) shift; exec xdg-terminal-exec "$@" ;;
+  *) echo "usage: $0 browser|files|editor|terminal [CMD...]" >&2; exit 2 ;;
 esac
 desktop=$(xdg-mime query default "$mime" 2>/dev/null)
 if [[ -z "$desktop" ]]; then

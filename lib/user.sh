@@ -2,7 +2,7 @@
 # Per-user configuration: config layering, Umbriel config, wallpapers, GTK/Qt/KDE settings.
 
 WALL_DIR="$HOME/Pictures/Wallpapers"
-UMBRIEL_SCRIPTS=(desks.sh)
+UMBRIEL_SCRIPTS=(desks)
 
 # umbriel_stub REPO [CURSOR] -> ~/.config/umbriel/config.toml (written once, then it's yours). Umbriel applies the
 # included defaults first and this file last, so whatever is set here wins.
@@ -124,6 +124,12 @@ link_umbriel_scripts() {
       continue
     fi
     ln -sfn "$src" "$dest"
+  done
+  # Umbriel's keybinding overview titles a section by program name: "Open" reads better than "Open-default".
+  [[ -e "$2/umbriel/scripts/open" && ! -L "$2/umbriel/scripts/open" ]] || ln -sfn "$1/bin/open-default" "$2/umbriel/scripts/open"
+  # Links to scripts that were renamed or dropped (dock.sh, desks.sh) would point nowhere.
+  for dest in "$2"/umbriel/scripts/*; do
+    if [[ -L "$dest" && ! -e "$dest" ]]; then rm -f "$dest"; fi
   done
 }
 
@@ -275,8 +281,6 @@ setup_user() {
   # The layout chosen on the installer's Monitors page; then each compositor's monitor file.
   if [[ -n "${SAVE_MONITORS:-}" ]]; then mon_save; fi
   write_monitors "$HOME/.config"
-  # dock.sh became dock-watch: a link to the old script would point nowhere.
-  if [[ -L "$HOME/.config/umbriel/scripts/dock.sh" && ! -e "$HOME/.config/umbriel/scripts/dock.sh" ]]; then rm -f "$HOME/.config/umbriel/scripts/dock.sh"; fi
   # Noctalia's btop template only switches the theme in an existing btop.conf; btop fills in the rest itself.
   write_once "$HOME/.config/btop/btop.conf" 'color_theme = "noctalia"'
   download_wallpapers "$list" "$WALL_DIR"

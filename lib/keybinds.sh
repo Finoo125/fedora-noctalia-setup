@@ -92,12 +92,25 @@ kb_umbriel_action() {
     move-left) echo window-move-or-output-left ;; move-right) echo window-move-or-output-right ;;
     move-up) echo window-move-up ;; move-down) echo window-move-down ;;
     cycle) echo window-focus-next ;; overview) echo overview-toggle ;; scratchpad) echo scratchpad-toggle ;;
-    desk-[0-9]) echo "spawn ~/.config/umbriel/scripts/desks.sh focus ${1#desk-}" ;;
+    desk-[0-9]) echo "spawn ~/.config/umbriel/scripts/desks focus ${1#desk-}" ;;
     to-desk-[0-9]) echo "window-move-to-workspace-silent ${1#to-desk-}" ;;
-    desk-prev) echo "spawn ~/.config/umbriel/scripts/desks.sh step -1" ;;
-    desk-next) echo "spawn ~/.config/umbriel/scripts/desks.sh step 1" ;;
-    carry-prev) echo "spawn ~/.config/umbriel/scripts/desks.sh carry -1" ;;
-    carry-next) echo "spawn ~/.config/umbriel/scripts/desks.sh carry 1" ;;
+    desk-prev) echo "spawn ~/.config/umbriel/scripts/desks step -1" ;;
+    desk-next) echo "spawn ~/.config/umbriel/scripts/desks step 1" ;;
+    carry-prev) echo "spawn ~/.config/umbriel/scripts/desks carry -1" ;;
+    carry-next) echo "spawn ~/.config/umbriel/scripts/desks carry 1" ;;
+  esac
+}
+
+# kb_umbriel_spawn COMMAND -> the command as Umbriel runs it. Its keybinding overview groups commands by program
+# name, so the default-app launchers and the terminal go through ~/.config/umbriel/scripts/open (open-default):
+# one "Open" section instead of "Open-default" and "Xdg-terminal-exec".
+# shellcheck disable=SC2088 # the ~ is for Umbriel, which expands it
+kb_umbriel_spawn() {
+  case "$1" in
+    "open-default "*) echo "~/.config/umbriel/scripts/open ${1#open-default }" ;;
+    xdg-terminal-exec) echo "~/.config/umbriel/scripts/open terminal" ;;
+    "xdg-terminal-exec "*) echo "~/.config/umbriel/scripts/open terminal ${1#xdg-terminal-exec }" ;;
+    *) echo "$1" ;;
   esac
 }
 
@@ -107,7 +120,7 @@ kb_umbriel() {
   echo "[keybinds]"
   for id in "${KB_IDS[@]}"; do
     case "${KB_KIND[$id]}" in
-      spawn) action="spawn ${KB_ARG[$id]}" ;;
+      spawn) action="spawn $(kb_umbriel_spawn "${KB_ARG[$id]}")" ;;
       noctalia) action="spawn noctalia msg ${KB_ARG[$id]}" ;;
       wm) action=$(kb_umbriel_action "${KB_ARG[$id]}") ;;
     esac

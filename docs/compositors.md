@@ -36,7 +36,7 @@ colors) and has a "Your own changes go below this line" marker: what you add the
 defaults update with `update`. Delete the file and run `install.sh` to get a fresh one.
 
 - **Umbriel:** tables merge key by key; a list you set (like `general.autostart`) replaces the default list.
-  `~/.config/umbriel/scripts/` links to `desks.sh` (linked desks across monitors).
+  `~/.config/umbriel/scripts/` links to `desks` (linked desks across monitors) and `open` (`open-default`; the names are the headings of Umbriel's keybinding overview).
 - **Hyprland:** Lua (Hyprland 0.55 and newer). The defaults are modules in `config/hypr`; your `hyprland.lua`
   requires them. It runs through uwsm, whose environment is `~/.config/uwsm/env`. A fedora-hyprland stub found there
   is replaced once, the old one kept as `hyprland.lua.fedora-hyprland`.

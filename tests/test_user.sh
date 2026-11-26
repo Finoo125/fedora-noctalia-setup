@@ -87,10 +87,13 @@ assert_true "new installs open folders in Luciole" grep -qx 'inode/directory=dev
 
 # Scripts are links into the repo; one you changed yourself stays.
 cfg="$tmp/cfg"; mkdir -p "$cfg/umbriel/scripts"
-cp config/umbriel/scripts/desks.sh "$cfg/umbriel/scripts/desks.sh"
+cp config/umbriel/scripts/desks "$cfg/umbriel/scripts/desks"
 echo 'my own' >"$cfg/umbriel/scripts/old.sh"
+ln -s "$PWD/config/umbriel/scripts/desks.sh" "$cfg/umbriel/scripts/desks.sh"
 link_umbriel_scripts "$PWD" "$cfg" 2>/dev/null
-assert_eq "$PWD/config/umbriel/scripts/desks.sh" "$(readlink "$cfg/umbriel/scripts/desks.sh")" "an unchanged copy becomes a link"
+assert_eq "$PWD/config/umbriel/scripts/desks" "$(readlink "$cfg/umbriel/scripts/desks")" "an unchanged copy becomes a link"
+assert_eq "$PWD/bin/open-default" "$(readlink "$cfg/umbriel/scripts/open")" "Umbriel's launchers go through a link named open"
+assert_false "a link to the renamed desks.sh is removed" test -L "$cfg/umbriel/scripts/desks.sh"
 assert_true "the default-app launcher is a command now" test -x bin/open-default
 assert_eq "my own" "$(cat "$cfg/umbriel/scripts/old.sh")" "a script of your own stays"
 
